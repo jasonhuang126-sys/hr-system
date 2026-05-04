@@ -1,0 +1,1440 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>員工請假系統</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Noto Sans TC',sans-serif;background:#F1F5F9;color:#1E293B;min-height:100vh}
+
+/* LOGIN */
+#loginScreen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:linear-gradient(135deg,#1D4ED8 0%,#7C3AED 100%)}
+.login-card{background:#fff;border-radius:20px;padding:48px 40px;width:400px;box-shadow:0 20px 60px rgba(0,0,0,.25);text-align:center}
+.login-card .logo{font-size:44px;margin-bottom:12px}
+.login-card h1{font-size:22px;font-weight:700;margin-bottom:6px}
+.login-card p{color:#64748B;font-size:14px;margin-bottom:20px}
+.role-pills{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin-bottom:20px}
+.role-pill{padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600}
+.login-card select{width:100%;padding:12px 16px;border:2px solid #E2E8F0;border-radius:10px;font-size:15px;background:#F8FAFC;margin-bottom:16px;outline:none;cursor:pointer}
+.login-card select:focus{border-color:#2563EB}
+.btn-login{width:100%;padding:13px;background:#2563EB;color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer}
+.btn-login:hover{background:#1D4ED8}
+
+/* LAYOUT */
+#mainApp{display:none;min-height:100vh}
+.sidebar{width:240px;background:#1E293B;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.main{margin-left:240px;padding:28px;min-height:100vh}
+
+/* SIDEBAR */
+.sidebar-header{padding:20px 20px 16px;border-bottom:1px solid #334155}
+.brand{font-size:15px;font-weight:700;color:#fff;display:flex;align-items:center;gap:8px}
+.brand span{font-size:20px}
+.sidebar-user{padding:14px 20px;border-bottom:1px solid #334155}
+.sb-name{color:#F1F5F9;font-weight:700;font-size:14px}
+.sb-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+.sb-dept{color:#64748B;font-size:11px;margin-top:2px}
+nav{flex:1;padding:8px 0}
+nav a{display:flex;align-items:center;gap:10px;padding:9px 20px;color:#94A3B8;font-size:14px;font-weight:500;cursor:pointer;border-left:3px solid transparent;transition:all .15s}
+nav a:hover{background:#334155;color:#E2E8F0}
+nav a.active{background:rgba(37,99,235,.3);color:#93C5FD;border-left-color:#3B82F6}
+.nav-section{padding:14px 20px 4px;font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.1em}
+.sidebar-footer{padding:14px 20px;border-top:1px solid #334155}
+.btn-logout{width:100%;padding:8px;background:transparent;border:1px solid #475569;color:#94A3B8;border-radius:8px;font-size:13px;cursor:pointer}
+.btn-logout:hover{background:#334155;color:#E2E8F0}
+
+/* ROLE BADGES */
+.rbadge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.rb-employee{background:#0F766E;color:#fff}
+.rb-manager{background:#1D4ED8;color:#fff}
+.rb-hr{background:#D97706;color:#fff}
+.rb-ceo{background:#7C3AED;color:#fff}
+
+/* TRIAL BADGE */
+.trial-badge{display:inline-flex;align-items:center;padding:1px 7px;background:#FEF3C7;color:#D97706;border-radius:10px;font-size:11px;font-weight:700}
+
+/* TOP BAR */
+.topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:10px}
+.topbar h2{font-size:22px;font-weight:700}
+.text-muted{color:#94A3B8;font-size:13px}
+
+/* CARD */
+.card{background:#fff;border-radius:14px;padding:24px;box-shadow:0 1px 4px rgba(0,0,0,.06);margin-bottom:20px}
+.card-title{font-size:15px;font-weight:700;margin-bottom:16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.stat-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);text-align:center}
+.stat-num{font-size:28px;font-weight:800;line-height:1.1}
+.stat-label{font-size:12px;color:#64748B;margin-top:4px}
+
+/* BALANCE */
+.balance-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-bottom:20px}
+.balance-card{background:#fff;border-radius:12px;padding:18px;box-shadow:0 1px 4px rgba(0,0,0,.07);border-top:4px solid #ccc}
+.balance-card .type-name{font-size:13px;font-weight:600;color:#475569;margin-bottom:6px}
+.balance-card .days{font-size:28px;font-weight:800;line-height:1}
+.balance-card .days span{font-size:13px;font-weight:500;color:#94A3B8}
+.progress-bar{height:5px;background:#F1F5F9;border-radius:3px;margin-top:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px}
+.expiry{font-size:11px;color:#F59E0B;margin-top:6px}
+.expiry.expired{color:#EF4444}
+.pay-type{font-size:10px;margin-top:4px;color:#64748B}
+
+/* TABLE */
+.table-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:14px}
+th{text-align:left;padding:10px 14px;font-weight:600;color:#475569;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:2px solid #E2E8F0;background:#F8FAFC;white-space:nowrap}
+td{padding:11px 14px;border-bottom:1px solid #F1F5F9;color:#334155;vertical-align:middle}
+tr:hover td{background:#F8FAFC}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:12px;font-weight:600;gap:4px;white-space:nowrap}
+.badge-pending{background:#FEF3C7;color:#D97706}
+.badge-approved{background:#DCFCE7;color:#16A34A}
+.badge-rejected{background:#FEE2E2;color:#DC2626}
+.badge-type{background:#EFF6FF;color:#2563EB}
+
+/* FORM */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.form-group{margin-bottom:0}
+.form-group.full{grid-column:1/-1}
+label{display:block;font-size:13px;font-weight:600;color:#374151;margin-bottom:6px}
+input[type=date],input[type=text],input[type=number],select.form-control,textarea{width:100%;padding:11px 14px;border:2px solid #E2E8F0;border-radius:10px;font-size:14px;color:#1E293B;background:#F8FAFC;outline:none;transition:border .2s;font-family:inherit}
+input:focus,select.form-control:focus,textarea:focus{border-color:#2563EB;background:#fff}
+textarea{resize:vertical;min-height:80px}
+.form-hint{font-size:12px;color:#94A3B8;margin-top:4px}
+
+/* BUTTONS */
+.btn{padding:9px 18px;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;transition:all .2s;border:none;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:#2563EB;color:#fff}.btn-primary:hover{background:#1D4ED8}
+.btn-success{background:#16A34A;color:#fff}.btn-success:hover{background:#15803D}
+.btn-danger{background:#DC2626;color:#fff}.btn-danger:hover{background:#B91C1C}
+.btn-ghost{background:#F1F5F9;color:#475569}.btn-ghost:hover{background:#E2E8F0}
+.btn-amber{background:#D97706;color:#fff}.btn-amber:hover{background:#B45309}
+.btn-purple{background:#7C3AED;color:#fff}.btn-purple:hover{background:#6D28D9}
+.btn-sm{padding:5px 12px;font-size:13px}
+.btn-group{display:flex;gap:8px;flex-wrap:wrap}
+
+/* ALERTS */
+.alert{padding:12px 16px;border-radius:10px;margin-bottom:16px;font-size:14px;display:flex;align-items:flex-start;gap:8px;flex-wrap:wrap}
+.alert-info{background:#EFF6FF;color:#1D4ED8;border:1px solid #BFDBFE}
+.alert-success{background:#F0FDF4;color:#15803D;border:1px solid #BBF7D0}
+.alert-warning{background:#FFFBEB;color:#D97706;border:1px solid #FDE68A}
+.alert-danger{background:#FEF2F2;color:#DC2626;border:1px solid #FECACA}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:999;align-items:center;justify-content:center}
+.modal-bg.show{display:flex}
+.modal{background:#fff;border-radius:16px;padding:32px;width:480px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.modal h3{font-size:18px;font-weight:700;margin-bottom:4px}
+.modal .sub{color:#64748B;font-size:13px;margin-bottom:20px}
+.modal-footer{display:flex;justify-content:flex-end;gap:10px;margin-top:24px}
+
+/* EMPTY */
+.empty{text-align:center;padding:40px 20px;color:#94A3B8}
+.empty .icon{font-size:40px;margin-bottom:8px}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;right:24px;background:#1E293B;color:#fff;padding:12px 20px;border-radius:10px;font-size:14px;font-weight:500;z-index:9999;transform:translateY(80px);opacity:0;transition:all .3s;max-width:320px}
+#toast.show{transform:translateY(0);opacity:1}
+
+/* CHIP */
+.chip{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:600;background:#E0F2FE;color:#0369A1}
+
+/* ── ORG CHART DIRECTION 1 ── */
+.dept-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px}
+.dept-tab{padding:7px 16px;border-radius:20px;font-size:13px;font-weight:600;cursor:pointer;border:2px solid #E2E8F0;background:#fff;color:#64748B;transition:all .2s}
+.dept-tab.active{background:#1E293B;color:#fff;border-color:#1E293B}
+.dept-tab:hover:not(.active){border-color:#94A3B8;color:#1E293B}
+
+.org-table{width:100%;border-collapse:separate;border-spacing:0}
+.org-table thead th{background:#F8FAFC;padding:11px 18px;font-size:11px;font-weight:700;color:#64748B;text-transform:uppercase;letter-spacing:.06em;border-bottom:2px solid #E2E8F0;white-space:nowrap}
+.org-table tbody tr{transition:background .15s}
+.org-table tbody tr:hover{background:#F8FAFC}
+.org-table tbody td{padding:14px 18px;border-bottom:1px solid #F1F5F9;vertical-align:middle}
+.org-table tbody tr:last-child td{border-bottom:none}
+
+.person-cell{display:flex;align-items:center;gap:12px}
+.role-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0;margin-top:2px}
+.p-name{font-size:15px;font-weight:700;color:#1E293B}
+.p-meta{display:flex;align-items:center;gap:6px;margin-top:4px;flex-wrap:wrap}
+
+.superior-select{width:100%;padding:9px 12px;border:2px solid #E2E8F0;border-radius:9px;font-size:14px;background:#fff;cursor:pointer;outline:none;transition:border .2s;color:#1E293B;font-family:inherit}
+.superior-select:focus{border-color:#2563EB}
+.superior-select:hover{border-color:#94A3B8}
+
+/* CHAIN PILLS */
+.chain-display{display:flex;flex-direction:column;gap:8px}
+.chain-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.chain-day-label{font-size:11px;font-weight:700;color:#94A3B8;background:#F1F5F9;padding:2px 7px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.chain-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 11px;border-radius:20px;font-size:12px;font-weight:700;white-space:nowrap}
+.cp-employee{background:#DCFCE7;color:#166534}
+.cp-manager{background:#DBEAFE;color:#1E40AF}
+.cp-hr{background:#FEF3C7;color:#92400E}
+.cp-ceo{background:#EDE9FE;color:#5B21B6}
+.chain-arrow{color:#CBD5E1;font-size:14px;font-weight:700;flex-shrink:0}
+.observer-cell{display:flex;flex-direction:column;gap:3px}
+.observer-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;background:#F8FAFC;border:1px solid #E2E8F0;border-radius:8px;font-size:13px;color:#64748B}
+
+/* CHAIN STEPS (approval flow) */
+.chain-steps{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px}
+.step-dot{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex-shrink:0}
+.step-done{background:#DCFCE7;color:#16A34A}
+.step-current{background:#FEF3C7;color:#D97706}
+.step-wait{background:#F1F5F9;color:#94A3B8}
+
+/* SETTINGS */
+.settings-section{margin-bottom:24px}
+.settings-section h3{font-size:15px;font-weight:700;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid #E2E8F0}
+.input-row{display:flex;gap:10px;align-items:flex-end}
+.quota-input{width:70px;padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px;text-align:center}
+.date-input-sm{padding:5px 8px;border:1px solid #E2E8F0;border-radius:6px;font-size:12px}
+
+/* HR REPORT */
+.report-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:20px}
+.hr-table th,.hr-table td{text-align:center;padding:10px 12px}
+.hr-table th:first-child,.hr-table td:first-child,.hr-table th:nth-child(2),.hr-table td:nth-child(2),.hr-table th:nth-child(3),.hr-table td:nth-child(3){text-align:left}
+.deduct-cell{font-weight:800;color:#DC2626}
+
+/* SERVICE INFO */
+.service-info{font-size:11px;color:#94A3B8;margin-top:2px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-card">
+    <div class="logo">📋</div>
+    <h1>員工請假系統</h1>
+    <p>請選擇您的帳號登入</p>
+    <div class="role-pills" id="loginRolePills"></div>
+    <select id="userSelect"><option value="">-- 選擇使用者 --</option></select>
+    <button class="btn-login" onclick="login()">登入系統</button>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div id="mainApp">
+  <div class="sidebar">
+    <div class="sidebar-header"><div class="brand"><span>📋</span> 請假管理系統</div></div>
+    <div class="sidebar-user">
+      <div class="sb-name" id="sb-name">-</div>
+      <div class="sb-meta" id="sb-meta"></div>
+      <div class="sb-dept" id="sb-dept">-</div>
+    </div>
+    <nav id="sidebar-nav"></nav>
+    <div class="sidebar-footer"><button class="btn-logout" onclick="logout()">🚪 登出</button></div>
+  </div>
+  <div class="main" id="mainContent"></div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-bg" id="approveModal">
+  <div class="modal">
+    <h3 id="modal-title">審核請假申請</h3>
+    <p class="sub" id="modal-sub"></p>
+    <div class="form-group">
+      <label>審核備註（選填）</label>
+      <textarea id="modal-note" rows="3" placeholder="輸入審核說明..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('approveModal')">取消</button>
+      <button class="btn" id="modal-confirm-btn">確認</button>
+    </div>
+  </div>
+</div>
+<div class="modal-bg" id="deleteModal">
+  <div class="modal">
+    <h3>確認刪除</h3>
+    <p class="sub" id="delete-sub"></p>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('deleteModal')">取消</button>
+      <button class="btn btn-danger" id="delete-confirm-btn">確認刪除</button>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════
+//  CONSTANTS & DATA
+// ═══════════════════════════════════════
+const STORAGE_KEY = 'leaveSystem_v3';
+const LT_ANNUAL  = 1;  // 特別休假
+const LT_WELFARE = 2;  // 福利休假
+
+const defaultData = {
+  users: [
+    {id:1, name:'王小明',   email:'ming@co.com',    role:'employee', dept:'編輯部',  title:'資深編輯',   orgLevel:3, reportTo:4, hireDate:'2023-03-15'},
+    {id:2, name:'李小華',   email:'hua@co.com',     role:'employee', dept:'研究部',  title:'研究助理',   orgLevel:3, reportTo:5, hireDate:'2025-11-01'},
+    {id:3, name:'陳小芳',   email:'fang@co.com',    role:'employee', dept:'編輯部',  title:'編輯',       orgLevel:3, reportTo:4, hireDate:'2026-03-01'},
+    {id:4, name:'林主編',   email:'editor@co.com',  role:'manager',  dept:'編輯部',  title:'主編',       orgLevel:2, reportTo:6, hireDate:'2021-06-01'},
+    {id:5, name:'張研究主管',email:'rsrch@co.com',  role:'manager',  dept:'研究部',  title:'研究部主管', orgLevel:2, reportTo:6, hireDate:'2020-01-15'},
+    {id:6, name:'陳執行長', email:'ceo@co.com',     role:'ceo',      dept:'管理部',  title:'執行長',     orgLevel:1, reportTo:null, hireDate:'2019-01-01'},
+    {id:7, name:'人資小美', email:'hr@co.com',      role:'hr',       dept:'人資部',  title:'HR 專員',    orgLevel:2, reportTo:6, hireDate:'2022-09-01'},
+  ],
+  leaveTypes: [
+    {id:1, name:'特別休假', color:'#2563EB', emoji:'🏖️', deductible:false, payType:'full', calcType:'anniversary', autoCalc:'annual',  requiresAnnualFirst:false},
+    {id:2, name:'福利休假', color:'#7C3AED', emoji:'🌟', deductible:false, payType:'full', calcType:'anniversary', autoCalc:'welfare', requiresAnnualFirst:true},
+    {id:3, name:'病假',     color:'#DC2626', emoji:'🏥', deductible:false, payType:'half', calcType:'calendar',    autoCalc:null,      yearMax:30},
+    {id:4, name:'事假',     color:'#D97706', emoji:'📋', deductible:true,  payType:'none', calcType:'calendar',    autoCalc:null,      yearMax:14},
+    {id:5, name:'婚假',     color:'#EC4899', emoji:'💒', deductible:false, payType:'full', calcType:'event',       autoCalc:null,      maxDays:8},
+    {id:6, name:'喪假',     color:'#6B7280', emoji:'🕯️', deductible:false, payType:'full', calcType:'event',       autoCalc:null},
+    {id:7, name:'生理假',   color:'#F59E0B', emoji:'🌸', deductible:false, payType:'half', calcType:'calendar',    autoCalc:null,      yearMax:1},
+    {id:8, name:'公假',     color:'#0EA5E9', emoji:'🏛️', deductible:false, payType:'full', calcType:'event',       autoCalc:null},
+    {id:9, name:'陪產假',   color:'#10B981', emoji:'👶', deductible:false, payType:'full', calcType:'event',       autoCalc:null,      maxDays:5},
+  ],
+  balances: [
+    {userId:1, leaveTypeId:1, totalDays:14, usedDays:3,  expiryDate:'2027-03-15'},
+    {userId:1, leaveTypeId:2, totalDays:5,  usedDays:0,  expiryDate:'2027-03-15'},
+    {userId:1, leaveTypeId:3, totalDays:30, usedDays:1,  expiryDate:'2026-12-31'},
+    {userId:1, leaveTypeId:4, totalDays:14, usedDays:2,  expiryDate:'2026-12-31'},
+    {userId:2, leaveTypeId:1, totalDays:3,  usedDays:0,  expiryDate:'2026-11-01'},
+    {userId:2, leaveTypeId:2, totalDays:4,  usedDays:0,  expiryDate:'2026-11-01'},
+    {userId:2, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:2, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:3, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:3, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:4, leaveTypeId:1, totalDays:15, usedDays:0,  expiryDate:'2027-06-01'},
+    {userId:4, leaveTypeId:2, totalDays:5,  usedDays:0,  expiryDate:'2027-06-01'},
+    {userId:4, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:4, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:5, leaveTypeId:1, totalDays:15, usedDays:2,  expiryDate:'2027-01-15'},
+    {userId:5, leaveTypeId:2, totalDays:6,  usedDays:0,  expiryDate:'2027-01-15'},
+    {userId:5, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
+    {userId:5, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
+  ],
+  requests: [
+    {id:1, userId:1, leaveTypeId:1, startDate:'2026-04-01', endDate:'2026-04-03', days:3, halfDay:false, reason:'家庭旅遊', status:'approved', approvalChain:[4,6], currentStep:2, approvalLog:[{step:0,approverId:4,action:'approved',note:'祝旅途愉快',time:'2026-03-26'},{step:1,approverId:6,action:'approved',note:'',time:'2026-03-27'}], createdAt:'2026-03-25'},
+    {id:2, userId:2, leaveTypeId:3, startDate:'2026-04-10', endDate:'2026-04-10', days:1, halfDay:false, reason:'身體不適', status:'pending',  approvalChain:[5], currentStep:0, approvalLog:[], createdAt:'2026-04-09'},
+    {id:3, userId:1, leaveTypeId:4, startDate:'2026-05-05', endDate:'2026-05-06', days:2, halfDay:false, reason:'搬家',     status:'pending',  approvalChain:[4], currentStep:0, approvalLog:[], createdAt:'2026-04-30'},
+  ],
+  settings: {appsScriptUrl:'', googleCalendarId:'', companyName:'碳思能見'},
+  nextId: 4
+};
+
+let state = {currentUser:null, view:'dashboard', data:null, orgDept:'全部'};
+
+// ═══════════════════════════════════════
+//  PERSISTENCE
+// ═══════════════════════════════════════
+function loadData() {
+  try { const r=localStorage.getItem(STORAGE_KEY); state.data=r?JSON.parse(r):JSON.parse(JSON.stringify(defaultData)); }
+  catch(e) { state.data=JSON.parse(JSON.stringify(defaultData)); }
+}
+function saveData() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.data)); }
+
+// ═══════════════════════════════════════
+//  LEAVE AUTO-CALC HELPERS
+// ═══════════════════════════════════════
+function serviceMonths(hireDate) {
+  if (!hireDate) return 0;
+  return (new Date() - new Date(hireDate+'T00:00:00')) / (1000*60*60*24*30.4375);
+}
+function isInTrial(hireDate) { return serviceMonths(hireDate) < 3; }
+function serviceLabel(hireDate) {
+  if (!hireDate) return '';
+  const m = Math.floor(serviceMonths(hireDate));
+  if (m < 12) return `${m} 個月`;
+  const y = Math.floor(m/12), rm = m%12;
+  return rm > 0 ? `${y} 年 ${rm} 個月` : `${y} 年`;
+}
+
+function calcAnnualLeaveQuota(hireDate) {
+  const m = serviceMonths(hireDate);
+  if (m < 6)  return 0;
+  if (m < 12) return 3;
+  const y = m/12;
+  if (y < 2)  return 7;
+  if (y < 3)  return 10;
+  if (y < 5)  return 14;
+  if (y < 10) return 15;
+  return Math.min(15 + Math.floor(y-10), 30);
+}
+
+function calcWelfareLeaveQuota(hireDate) {
+  const m = serviceMonths(hireDate);
+  if (m < 3)  return 0;
+  if (m < 6)  return 3;
+  if (m < 12) return 4;
+  const y = m/12;
+  if (y < 3)  return 4;
+  if (y < 5)  return 5;
+  if (y < 9)  return 6;
+  return 7;
+}
+
+function calcNextAnniversary(hireDate) {
+  if (!hireDate) return '';
+  const hire = new Date(hireDate+'T00:00:00');
+  const now = new Date();
+  const next = new Date(hire);
+  next.setFullYear(now.getFullYear());
+  if (next <= now) next.setFullYear(now.getFullYear()+1);
+  return next.toISOString().split('T')[0];
+}
+
+function checkLeaveEligibility(userId, leaveTypeId) {
+  const user = getUser(userId);
+  if (!user || !user.hireDate) return {ok:true, msg:''};
+  const m = serviceMonths(user.hireDate);
+  const lt = getLeaveType(leaveTypeId);
+
+  if (m < 3 && [LT_ANNUAL, LT_WELFARE].includes(leaveTypeId))
+    return {ok:false, msg:`試用期內（到職未滿 3 個月）尚無法申請此假別`};
+
+  if (leaveTypeId === LT_ANNUAL && m < 6)
+    return {ok:false, msg:`到職未滿 6 個月，尚無法申請特別休假（還需約 ${Math.ceil(6-m)} 個月）`};
+
+  if (leaveTypeId === LT_WELFARE) {
+    const ab = getBalance(userId, LT_ANNUAL);
+    if (ab && (ab.totalDays - ab.usedDays) > 0)
+      return {ok:false, msg:`須先用完特別休假（剩餘 ${ab.totalDays-ab.usedDays} 天）才可申請福利休假`};
+  }
+
+  if (lt && lt.yearMax) {
+    const ab = getBalance(userId, leaveTypeId);
+    if (ab && (ab.totalDays - ab.usedDays) <= 0)
+      return {ok:false, msg:`今年度 ${lt.name} 額度已用完`};
+  }
+  return {ok:true, msg:''};
+}
+
+function autoCalcLeaveQuota(userId) {
+  const user = getUser(userId);
+  if (!user?.hireDate) { showToast('⚠️ 請先設定到職日','warn'); return; }
+  const annual  = calcAnnualLeaveQuota(user.hireDate);
+  const welfare = calcWelfareLeaveQuota(user.hireDate);
+  const expiry  = calcNextAnniversary(user.hireDate);
+
+  [[LT_ANNUAL, annual], [LT_WELFARE, welfare]].forEach(([ltId, days]) => {
+    let b = getBalance(userId, ltId);
+    if (b) { b.totalDays = days; b.expiryDate = expiry; }
+    else if (days > 0) state.data.balances.push({userId, leaveTypeId:ltId, totalDays:days, usedDays:0, expiryDate:expiry});
+  });
+
+  // Ensure calendar-year types exist with correct yearMax
+  state.data.leaveTypes.filter(lt => lt.calcType==='calendar' && lt.yearMax).forEach(lt => {
+    if (!getBalance(userId, lt.id))
+      state.data.balances.push({userId, leaveTypeId:lt.id, totalDays:lt.yearMax, usedDays:0, expiryDate:`${new Date().getFullYear()}-12-31`});
+  });
+
+  saveData();
+  showToast(`✅ 已更新：特別假 ${annual}天・福利假 ${welfare}天`);
+  renderEmployees();
+}
+
+// ═══════════════════════════════════════
+//  CORE HELPERS
+// ═══════════════════════════════════════
+function getLeaveType(id) { return state.data.leaveTypes.find(t=>t.id===id)||{name:'未知',color:'#999',emoji:'📋',deductible:false}; }
+function getUser(id)      { return state.data.users.find(u=>u.id===id); }
+function getBalance(uid,ltid){ return state.data.balances.find(b=>b.userId===uid&&b.leaveTypeId===ltid); }
+
+function calcDays(start, end) {
+  let d=0;
+  for(let x=new Date(start+'T00:00:00');x<=new Date(end+'T00:00:00');x.setDate(x.getDate()+1))
+    if(x.getDay()!==0&&x.getDay()!==6) d++;
+  return d;
+}
+function fmtDate(d) { return d ? new Date(d+'T00:00:00').toLocaleDateString('zh-TW',{year:'numeric',month:'2-digit',day:'2-digit'}) : '-'; }
+function today() { return new Date().toISOString().split('T')[0]; }
+
+function roleLabel(r) { return {employee:'員工',manager:'主管',hr:'HR',ceo:'CEO'}[r]||r; }
+function roleBadge(role) { return `<span class="rbadge rb-${role}">${roleLabel(role)}</span>`; }
+function roleDotColor(role) { return {employee:'#16A34A',manager:'#2563EB',hr:'#D97706',ceo:'#7C3AED'}[role]||'#64748B'; }
+
+function payTypeLabel(pt) { return {full:'全薪',half:'半薪',none:'不給薪'}[pt]||''; }
+
+function statusBadge(req) {
+  if (req.status==='approved') return '<span class="badge badge-approved">✅ 已核准</span>';
+  if (req.status==='rejected') return '<span class="badge badge-rejected">❌ 已退件</span>';
+  const uid = (req.approvalChain||[])[req.currentStep||0];
+  const ap  = uid ? getUser(uid) : null;
+  const step = req.approvalChain?.length > 1 ? ` (${(req.currentStep||0)+1}/${req.approvalChain.length})` : '';
+  return `<span class="badge badge-pending">⏳ 待 ${ap?ap.name:'?'} 審核${step}</span>`;
+}
+
+function chainStepsHtml(req) {
+  const chain = req.approvalChain||[];
+  if (!chain.length) return '';
+  return '<div class="chain-steps">' + chain.map((uid,i) => {
+    const u = getUser(uid);
+    let cls='step-wait', icon=i+1;
+    if (req.status==='approved'||i<req.currentStep){cls='step-done';icon='✓';}
+    else if (i===req.currentStep&&req.status==='pending'){cls='step-current';icon='⏳';}
+    return `${i>0?'<span style="color:#CBD5E1;font-size:11px">→</span>':''}
+      <div style="display:flex;align-items:center;gap:3px">
+        <div class="step-dot ${cls}">${icon}</div>
+        <span style="font-size:12px;color:#475569">${u?u.name:'?'}</span>
+      </div>`;
+  }).join('') + '</div>';
+}
+
+function showToast(msg,type='ok'){
+  const t=document.getElementById('toast');
+  t.textContent=msg;
+  t.style.background=type==='warn'?'#D97706':type==='err'?'#DC2626':'#1E293B';
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),3000);
+}
+function closeModal(id){document.getElementById(id).classList.remove('show');}
+function render(html){document.getElementById('mainContent').innerHTML=html;}
+
+// ═══════════════════════════════════════
+//  APPROVAL CHAIN LOGIC
+// ═══════════════════════════════════════
+function getApprovalChain(userId, days) {
+  const user = getUser(userId);
+  if (!user || user.orgLevel===1) return [];
+  const ceo = state.data.users.find(u=>u.orgLevel===1);
+  if (user.orgLevel===2) return ceo?[ceo.id]:[];
+  const superior = user.reportTo ? getUser(user.reportTo) : null;
+  if (!superior) return ceo?[ceo.id]:[];
+  if (days < 3) return [superior.id];
+  const chain = [superior.id];
+  if (ceo && ceo.id!==superior.id) chain.push(ceo.id);
+  return chain;
+}
+
+// Chain pills for org chart display
+function pillFor(u) {
+  if (!u) return `<span class="chain-pill" style="background:#F1F5F9;color:#64748B">?</span>`;
+  const cls={employee:'cp-employee',manager:'cp-manager',hr:'cp-hr',ceo:'cp-ceo'}[u.role]||'cp-employee';
+  const emoji={employee:'👤',manager:'🔵',hr:'🟡',ceo:'👑'}[u.role]||'👤';
+  return `<span class="chain-pill ${cls}">${emoji} ${u.name}</span>`;
+}
+
+function buildChainDisplay(u) {
+  if (u.role==='hr') return `
+    <div class="observer-cell">
+      <div class="observer-badge">👁️ 觀察者・記錄人</div>
+      <div style="font-size:11px;color:#94A3B8;margin-top:4px">掌握所有審批進度，不在審批鏈中</div>
+    </div>`;
+  if (u.role==='ceo') return pillFor(u)+`<span style="font-size:12px;color:#94A3B8;margin-left:6px">最終審批人</span>`;
+  if (!u.reportTo) return `<span style="color:#DC2626;font-size:13px">⚠️ 尚未指定直屬主管</span>`;
+
+  const short = getApprovalChain(u.id, 1);
+  const long  = getApprovalChain(u.id, 3);
+  const sameChain = JSON.stringify(short)===JSON.stringify(long);
+
+  const buildRow = (chain) => [pillFor(u), ...chain.map(uid=>getUser(uid)).map(pillFor)]
+    .join('<span class="chain-arrow">→</span>');
+
+  if (sameChain) return `<div class="chain-display"><div class="chain-row">${buildRow(short)}</div></div>`;
+
+  return `<div class="chain-display">
+    <div class="chain-row"><span class="chain-day-label">1–2 天</span>${buildRow(short)}</div>
+    <div class="chain-row"><span class="chain-day-label">3 天↑</span>${buildRow(long)}</div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════
+function initLogin() {
+  loadData();
+  const sel = document.getElementById('userSelect');
+  const pills = document.getElementById('loginRolePills');
+  const rc = {employee:'#0F766E',manager:'#1D4ED8',hr:'#D97706',ceo:'#7C3AED'};
+  [...new Set(state.data.users.map(u=>u.role))].forEach(r => {
+    pills.innerHTML += `<span class="role-pill" style="background:${rc[r]};color:#fff">${roleLabel(r)}</span>`;
+  });
+  state.data.users.forEach(u => {
+    sel.innerHTML += `<option value="${u.id}">${u.name}（${roleLabel(u.role)}・${u.title}）</option>`;
+  });
+}
+
+function login() {
+  const uid = parseInt(document.getElementById('userSelect').value);
+  if (!uid) { showToast('⚠️ 請選擇使用者','warn'); return; }
+  state.currentUser = state.data.users.find(u=>u.id===uid);
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('mainApp').style.display='block';
+  updateSidebar();
+  const def = {employee:'dashboard',manager:'dashboard',hr:'hrDashboard',ceo:'ceoApprovals'};
+  navigate(def[state.currentUser.role]||'dashboard');
+}
+
+function logout() {
+  state.currentUser=null;
+  document.getElementById('mainApp').style.display='none';
+  document.getElementById('loginScreen').style.display='flex';
+  document.getElementById('userSelect').value='';
+}
+
+function updateSidebar() {
+  const u = state.currentUser;
+  document.getElementById('sb-name').textContent = u.name;
+  document.getElementById('sb-dept').textContent = `${u.title}・${u.dept}`;
+  const trial = u.hireDate && isInTrial(u.hireDate);
+  document.getElementById('sb-meta').innerHTML = roleBadge(u.role) +
+    (trial ? ' <span class="trial-badge">🔸 試用期</span>' : '');
+
+  const navDef = {
+    employee:[
+      {view:'dashboard',icon:'🏠',label:'儀表板'},
+      {view:'apply',icon:'✏️',label:'申請請假'},
+      {view:'myLeaves',icon:'📅',label:'我的請假記錄'},
+      {view:'balances',icon:'💰',label:'假別餘額'},
+    ],
+    manager:[
+      {view:'dashboard',icon:'🏠',label:'儀表板'},
+      {view:'apply',icon:'✏️',label:'申請請假'},
+      {view:'myLeaves',icon:'📅',label:'我的請假記錄'},
+      {view:'balances',icon:'💰',label:'假別餘額'},
+      {divider:'主管功能'},
+      {view:'approvals',icon:'✅',label:'待審核申請'},
+      {view:'teamOverview',icon:'📊',label:'團隊假別總覽'},
+      {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
+      {view:'employees',icon:'👥',label:'員工假別管理'},
+      {view:'settings',icon:'⚙️',label:'系統設定'},
+    ],
+    hr:[
+      {view:'hrDashboard',icon:'📊',label:'全員假別儀表板'},
+      {view:'monthlyReport',icon:'📋',label:'月份薪資報表'},
+      {view:'employees',icon:'👥',label:'員工假別管理'},
+      {view:'orgChart',icon:'🏗️',label:'審批架構總覽'},
+      {view:'settings',icon:'⚙️',label:'系統設定'},
+    ],
+    ceo:[
+      {view:'dashboard',icon:'🏠',label:'儀表板'},
+      {view:'ceoApprovals',icon:'✅',label:'待我審核'},
+      {view:'teamOverview',icon:'📊',label:'全員假別總覽'},
+      {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
+    ],
+  };
+
+  const links = navDef[u.role]||navDef.employee;
+  document.getElementById('sidebar-nav').innerHTML = links.map(l =>
+    l.divider ? `<div class="nav-section">${l.divider}</div>` :
+    `<a onclick="navigate('${l.view}')" id="nav-${l.view}">${l.icon} ${l.label}</a>`
+  ).join('');
+}
+
+function navigate(view) {
+  state.view=view;
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('nav-'+view)?.classList.add('active');
+  ({dashboard:renderDashboard,apply:renderApply,myLeaves:renderMyLeaves,
+    balances:renderBalances,approvals:renderApprovals,ceoApprovals:renderCeoApprovals,
+    teamOverview:renderTeamOverview,orgChart:renderOrgChart,hrDashboard:renderHRDashboard,
+    monthlyReport:renderMonthlyReport,employees:renderEmployees,settings:renderSettings
+  })[view]?.();
+}
+
+// ═══════════════════════════════════════
+//  VIEW: DASHBOARD
+// ═══════════════════════════════════════
+function renderDashboard() {
+  const u = state.currentUser;
+  const myReqs = state.data.requests.filter(r=>r.userId===u.id);
+  const myPending = state.data.requests.filter(r=>r.status==='pending'&&(r.approvalChain||[])[r.currentStep||0]===u.id);
+  const totalLeft = state.data.balances.filter(b=>b.userId===u.id).reduce((s,b)=>s+b.totalDays-b.usedDays,0);
+  const trial = u.hireDate && isInTrial(u.hireDate);
+
+  render(`
+    <div class="topbar">
+      <h2>🏠 儀表板</h2>
+      <span class="text-muted">${new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'long'})}</span>
+    </div>
+    ${trial ? `<div class="alert alert-warning">🔸 您目前處於<strong>試用期</strong>內（到職日：${fmtDate(u.hireDate)}，服務 ${serviceLabel(u.hireDate)}）。試用期間特別休假與福利休假尚無法申請。</div>` : ''}
+    ${myPending.length > 0 ? `<div class="alert alert-warning">⚠️ 有 <strong>${myPending.length}</strong> 筆申請等待您審核 <button class="btn btn-sm btn-ghost" onclick="navigate('${u.role==='ceo'?'ceoApprovals':'approvals'}')" style="margin-left:auto">前往審核</button></div>` : ''}
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" style="color:#2563EB">${totalLeft}</div><div class="stat-label">剩餘天數</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#F59E0B">${myReqs.filter(r=>r.status==='pending').length}</div><div class="stat-label">審核中</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#16A34A">${myReqs.filter(r=>r.status==='approved').length}</div><div class="stat-label">已核准</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#7C3AED">${myPending.length}</div><div class="stat-label">待我審核</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">💰 假別餘額</div>
+      <div class="balance-grid">
+        ${state.data.balances.filter(b=>b.userId===u.id).map(b=>{
+          const lt=getLeaveType(b.leaveTypeId);
+          const rem=b.totalDays-b.usedDays;
+          const pct=b.totalDays>0?Math.round(b.usedDays/b.totalDays*100):0;
+          const exp=b.expiryDate&&new Date(b.expiryDate)<new Date();
+          return `<div class="balance-card" style="border-top-color:${lt.color}">
+            <div class="type-name">${lt.emoji} ${lt.name}</div>
+            <div class="days" style="color:${lt.color}">${rem} <span>/ ${b.totalDays} 天</span></div>
+            <div class="pay-type">${payTypeLabel(lt.payType)}</div>
+            <div class="progress-bar"><div class="progress-fill" style="width:${pct}%;background:${lt.color}"></div></div>
+            ${b.expiryDate?`<div class="expiry ${exp?'expired':''}">⏰ ${fmtDate(b.expiryDate)}</div>`:''}
+          </div>`;
+        }).join('')}
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 最近申請</div>
+      ${myReqs.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>假別</th><th>期間</th><th>天數</th><th>審批進度</th><th>申請日</th></tr></thead>
+        <tbody>${myReqs.slice().reverse().slice(0,5).map(r=>{
+          const lt=getLeaveType(r.leaveTypeId);
+          return `<tr><td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+            <td>${fmtDate(r.startDate)} ~ ${fmtDate(r.endDate)}</td><td>${r.days}天</td>
+            <td>${statusBadge(r)}</td><td class="text-muted">${fmtDate(r.createdAt)}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+    <div style="text-align:right"><button class="btn btn-primary" onclick="navigate('apply')">✏️ 申請請假</button></div>
+  `);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: APPLY LEAVE
+// ═══════════════════════════════════════
+function renderApply() {
+  const u = state.currentUser;
+  render(`
+    <div class="topbar"><h2>✏️ 申請請假</h2></div>
+    <div class="card" style="max-width:640px">
+      <div class="card-title">填寫請假申請</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>假別 <span style="color:#DC2626">*</span></label>
+          <select class="form-control" id="applyType" onchange="applyTypeChange()">
+            <option value="">-- 選擇假別 --</option>
+            ${state.data.leaveTypes.map(lt=>{
+              const b=getBalance(u.id,lt.id);
+              const rem=b?b.totalDays-b.usedDays:null;
+              const elig=checkLeaveEligibility(u.id,lt.id);
+              const disabled=!elig.ok?'disabled':'';
+              const remStr=rem!==null?`剩餘 ${rem} 天`:(lt.calcType==='event'?'依情況':'-');
+              return `<option value="${lt.id}" ${disabled}>${lt.emoji} ${lt.name}（${remStr}）${!elig.ok?' ⛔':''}${lt.deductible?' ★扣薪':''}</option>`;
+            }).join('')}
+          </select>
+          <div id="applyTypeInfo" style="margin-top:8px"></div>
+        </div>
+        <div class="form-group">
+          <label>開始日期 <span style="color:#DC2626">*</span></label>
+          <input type="date" id="applyStart" min="${today()}" onchange="applyCalc()">
+        </div>
+        <div class="form-group">
+          <label>結束日期 <span style="color:#DC2626">*</span></label>
+          <input type="date" id="applyEnd" min="${today()}" onchange="applyCalc()">
+        </div>
+        <div class="form-group full" style="display:flex;align-items:center;gap:10px">
+          <input type="checkbox" id="applyHalf" style="width:18px;height:18px;cursor:pointer" onchange="applyCalc()">
+          <label for="applyHalf" style="margin:0;font-weight:500;cursor:pointer">半天請假</label>
+        </div>
+        <div class="form-group full" id="applyDaysInfo"></div>
+        <div class="form-group full" id="applyChainInfo"></div>
+        <div class="form-group full">
+          <label>請假原因 <span style="color:#DC2626">*</span></label>
+          <textarea id="applyReason" placeholder="請填寫請假原因..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="navigate('dashboard')">取消</button>
+        <button class="btn btn-primary" onclick="submitLeave()">📤 送出申請</button>
+      </div>
+    </div>
+  `);
+}
+
+function applyTypeChange() {
+  const u=state.currentUser;
+  const ltId=parseInt(document.getElementById('applyType').value);
+  const b=getBalance(u.id,ltId);
+  const lt=getLeaveType(ltId);
+  const el=document.getElementById('applyTypeInfo');
+  if (!ltId){el.innerHTML='';return;}
+  const elig=checkLeaveEligibility(u.id,ltId);
+  if (!elig.ok){el.innerHTML=`<div class="alert alert-danger">⛔ ${elig.msg}</div>`;return;}
+  const rem=b?b.totalDays-b.usedDays:null;
+  const exp=b?.expiryDate&&new Date(b.expiryDate)<new Date();
+  el.innerHTML=`<div class="alert ${exp?'alert-danger':'alert-info'}">
+    ${lt.emoji} ${lt.name}・${payTypeLabel(lt.payType)}
+    ${rem!==null?`・剩餘 <strong>${rem} 天</strong>（已用 ${b.usedDays}/${b.totalDays}）`:''}
+    ${b?.expiryDate?`・期限 ${fmtDate(b.expiryDate)}${exp?' ⚠️已過期':''}` : ''}
+    ${lt.requiresAnnualFirst?'・<span style="color:#7C3AED;font-weight:600">需先用完特別休假</span>':''}
+    ${lt.deductible?'・<span style="color:#DC2626;font-weight:600">★此假別將扣薪</span>':''}
+  </div>`;
+  applyCalc();
+}
+
+function applyCalc() {
+  const u=state.currentUser;
+  const ltId=parseInt(document.getElementById('applyType').value);
+  const start=document.getElementById('applyStart').value;
+  const end=document.getElementById('applyEnd').value;
+  const half=document.getElementById('applyHalf').checked;
+  const dEl=document.getElementById('applyDaysInfo');
+  const cEl=document.getElementById('applyChainInfo');
+  if (!start||!end){dEl.innerHTML='';cEl.innerHTML='';return;}
+  if (new Date(end)<new Date(start)){dEl.innerHTML='<div class="alert alert-danger">⚠️ 結束日期不能早於開始日期</div>';cEl.innerHTML='';return;}
+  const days=half?0.5:calcDays(start,end);
+  const b=getBalance(u.id,ltId);
+  const rem=b?b.totalDays-b.usedDays:999;
+  const ok=days<=rem;
+  dEl.innerHTML=`<div class="alert ${ok?'alert-success':'alert-danger'}">📆 請假 <strong>${days} 天</strong>（工作日）${!ok?`・<span style="color:#DC2626">⚠️ 超過餘額（${rem} 天）</span>`:''}</div>`;
+  const chain=getApprovalChain(u.id,days);
+  if (chain.length) {
+    const note=days>=3&&u.orgLevel===3?'（3天以上，逐級送簽）':'';
+    cEl.innerHTML=`<div class="alert alert-info">🔗 審批流程：${[u.name,...chain.map(id=>getUser(id)?.name||'?')].join(' → ')} ${note}</div>`;
+  } else cEl.innerHTML='';
+}
+
+function submitLeave() {
+  const u=state.currentUser;
+  const ltId=parseInt(document.getElementById('applyType').value);
+  const start=document.getElementById('applyStart').value;
+  const end=document.getElementById('applyEnd').value;
+  const half=document.getElementById('applyHalf').checked;
+  const reason=document.getElementById('applyReason').value.trim();
+  if (!ltId){showToast('⚠️ 請選擇假別','warn');return;}
+  if (!start||!end){showToast('⚠️ 請填寫日期','warn');return;}
+  if (!reason){showToast('⚠️ 請填寫原因','warn');return;}
+  if (new Date(end)<new Date(start)){showToast('⚠️ 日期錯誤','warn');return;}
+  const elig=checkLeaveEligibility(u.id,ltId);
+  if (!elig.ok){showToast('⛔ '+elig.msg,'err');return;}
+  const days=half?0.5:calcDays(start,end);
+  const b=getBalance(u.id,ltId);
+  if (b&&days>b.totalDays-b.usedDays){showToast('⚠️ 假別餘額不足','err');return;}
+  if (b?.expiryDate&&new Date(b.expiryDate)<new Date()){showToast('⚠️ 此假別已過期','err');return;}
+  const chain=getApprovalChain(u.id,days);
+  state.data.requests.push({id:state.data.nextId++,userId:u.id,leaveTypeId:ltId,startDate:start,endDate:end,days,halfDay:half,reason,status:'pending',approvalChain:chain,currentStep:0,approvalLog:[],createdAt:today()});
+  saveData();
+  showToast('✅ 申請已送出，等待審核');
+  navigate('myLeaves');
+}
+
+// ═══════════════════════════════════════
+//  VIEW: MY LEAVES
+// ═══════════════════════════════════════
+function renderMyLeaves() {
+  const u=state.currentUser;
+  const reqs=state.data.requests.filter(r=>r.userId===u.id).reverse();
+  render(`
+    <div class="topbar"><h2>📅 我的請假記錄</h2>
+      <button class="btn btn-primary btn-sm" onclick="navigate('apply')">✏️ 申請請假</button>
+    </div>
+    <div class="card">
+      ${reqs.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>假別</th><th>期間</th><th>天數</th><th>原因</th><th>審批進度</th><th>申請日</th><th></th></tr></thead>
+        <tbody>${reqs.map(r=>{
+          const lt=getLeaveType(r.leaveTypeId);
+          return `<tr>
+            <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+            <td style="white-space:nowrap">${fmtDate(r.startDate)}<br><span class="text-muted">~${fmtDate(r.endDate)}</span></td>
+            <td>${r.days}${r.halfDay?' (半)':''} 天</td>
+            <td style="max-width:120px;font-size:13px">${r.reason}</td>
+            <td>${statusBadge(r)}<br>${chainStepsHtml(r)}</td>
+            <td class="text-muted">${fmtDate(r.createdAt)}</td>
+            <td>${r.status==='pending'?`<button class="btn btn-sm btn-danger" onclick="cancelReq(${r.id})">撤回</button>`:''}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+  `);
+}
+
+function cancelReq(id) {
+  const m=document.getElementById('deleteModal');
+  document.getElementById('delete-sub').textContent='確定要撤回這筆請假申請嗎？';
+  document.getElementById('delete-confirm-btn').onclick=()=>{
+    state.data.requests=state.data.requests.filter(r=>r.id!==id);
+    saveData();closeModal('deleteModal');showToast('✅ 已撤回');renderMyLeaves();
+  };
+  m.classList.add('show');
+}
+
+// ═══════════════════════════════════════
+//  VIEW: BALANCES
+// ═══════════════════════════════════════
+function renderBalances() {
+  const u=state.currentUser;
+  const bals=state.data.balances.filter(b=>b.userId===u.id);
+  render(`
+    <div class="topbar"><h2>💰 假別餘額</h2></div>
+    <div class="balance-grid">
+      ${bals.map(b=>{
+        const lt=getLeaveType(b.leaveTypeId);
+        const rem=b.totalDays-b.usedDays;
+        const pct=b.totalDays>0?Math.round(b.usedDays/b.totalDays*100):0;
+        const exp=b.expiryDate&&new Date(b.expiryDate)<new Date();
+        return `<div class="balance-card" style="border-top-color:${lt.color};padding:20px">
+          <div class="type-name" style="font-size:15px">${lt.emoji} ${lt.name}</div>
+          <div class="days" style="color:${lt.color};font-size:30px;margin:8px 0">${rem} <span>/ ${b.totalDays} 天</span></div>
+          <div class="pay-type" style="font-size:12px">${payTypeLabel(lt.payType)}${lt.requiresAnnualFirst?'・需先用完特別休假':''}</div>
+          <div class="text-muted" style="font-size:12px;margin-top:2px">已使用 ${b.usedDays} 天</div>
+          <div class="progress-bar" style="height:7px"><div class="progress-fill" style="width:${pct}%;background:${lt.color}"></div></div>
+          ${b.expiryDate?`<div class="expiry ${exp?'expired':''}" style="font-size:12px;margin-top:10px">⏰ ${fmtDate(b.expiryDate)}${exp?' ⚠️ 已過期':''}</div>`:''}
+          ${lt.deductible?'<div style="font-size:11px;color:#DC2626;margin-top:4px">★ 請假期間扣薪</div>':''}
+        </div>`;
+      }).join('')}
+    </div>
+    ${bals.length===0?'<div class="card"><div class="empty"><div class="icon">💰</div><p>尚未設定假別額度，請聯繫 HR 或主管</p></div></div>':''}
+  `);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: APPROVALS
+// ═══════════════════════════════════════
+function renderApprovals() {
+  const u=state.currentUser;
+  const pending=state.data.requests.filter(r=>r.status==='pending'&&(r.approvalChain||[])[r.currentStep||0]===u.id);
+  const history=state.data.requests.filter(r=>(r.approvalLog||[]).some(l=>l.approverId===u.id)).reverse().slice(0,20);
+  render(`
+    <div class="topbar"><h2>✅ 待審核申請</h2></div>
+    <div class="card">
+      <div class="card-title">⏳ 待審核（${pending.length} 筆）</div>
+      ${pending.length===0?'<div class="empty"><div class="icon">🎉</div><p>目前沒有待審核申請</p></div>':approvalTable(pending)}
+    </div>
+    <div class="card">
+      <div class="card-title">📋 我的審核歷史</div>
+      ${history.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>員工</th><th>假別</th><th>期間</th><th>天數</th><th>我的決定</th><th>備註</th></tr></thead>
+        <tbody>${history.map(r=>{
+          const emp=getUser(r.userId);const lt=getLeaveType(r.leaveTypeId);
+          const myLog=(r.approvalLog||[]).find(l=>l.approverId===u.id);
+          return `<tr><td>${emp?.name}</td><td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+            <td>${fmtDate(r.startDate)}~${fmtDate(r.endDate)}</td><td>${r.days}天</td>
+            <td>${myLog?(myLog.action==='approved'?'<span class="badge badge-approved">✅ 核准</span>':'<span class="badge badge-rejected">❌ 退件</span>'):'-'}</td>
+            <td class="text-muted">${myLog?.note||'-'}</td></tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+  `);
+}
+
+function renderCeoApprovals() {
+  const u=state.currentUser;
+  const pending=state.data.requests.filter(r=>r.status==='pending'&&(r.approvalChain||[])[r.currentStep||0]===u.id);
+  render(`
+    <div class="topbar"><h2>✅ 待我審核</h2></div>
+    <div class="card">
+      <div class="card-title">⏳ 等待最終核准（${pending.length} 筆）</div>
+      ${pending.length===0?'<div class="empty"><div class="icon">🎉</div><p>目前沒有待審核申請</p></div>':approvalTable(pending,true)}
+    </div>
+  `);
+}
+
+function approvalTable(reqs, showPrevApproval=false) {
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>員工</th><th>假別</th><th>期間</th><th>天數</th><th>原因</th><th>餘額</th>
+      ${showPrevApproval?'<th>前一關</th>':''}
+      <th>審批進度</th><th>操作</th></tr></thead>
+    <tbody>${reqs.map(r=>{
+      const emp=getUser(r.userId);const lt=getLeaveType(r.leaveTypeId);
+      const b=getBalance(r.userId,r.leaveTypeId);const rem=b?b.totalDays-b.usedDays:'-';
+      const prevLog=(r.approvalLog||[]).find(l=>l.step===r.currentStep-1);
+      const prevAp=prevLog?getUser(prevLog.approverId):null;
+      return `<tr>
+        <td><strong>${emp?.name}</strong><br><span class="text-muted">${emp?.title}</span></td>
+        <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+        <td style="white-space:nowrap">${fmtDate(r.startDate)}<br><span class="text-muted">~${fmtDate(r.endDate)}</span></td>
+        <td>${r.days}天</td>
+        <td style="font-size:13px;max-width:120px">${r.reason}</td>
+        <td><span style="font-weight:700;color:${rem!=='-'&&rem>=r.days?'#16A34A':'#DC2626'}">${rem}</span>天</td>
+        ${showPrevApproval?`<td style="font-size:13px">${prevAp?`<span class="badge badge-approved">✅ ${prevAp.name}</span>${prevLog?.note?`<br><span class="text-muted">${prevLog.note}</span>`:''}`:'-'}</td>`:''}
+        <td>${chainStepsHtml(r)}</td>
+        <td><div class="btn-group">
+          <button class="btn btn-sm btn-success" onclick="showApproveModal(${r.id},'approve')">✅</button>
+          <button class="btn btn-sm btn-danger"  onclick="showApproveModal(${r.id},'reject')">❌</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+let _pAction=null;
+function showApproveModal(reqId,action) {
+  _pAction={reqId,action};
+  document.getElementById('modal-note').value='';
+  const btn=document.getElementById('modal-confirm-btn');
+  if (action==='approve'){document.getElementById('modal-title').textContent='✅ 核准請假申請';document.getElementById('modal-sub').textContent='核准後將進入下一審批流程或完成';btn.textContent='確認核准';btn.className='btn btn-success';}
+  else{document.getElementById('modal-title').textContent='❌ 退件請假申請';document.getElementById('modal-sub').textContent='請填寫退件原因，方便員工重新申請';btn.textContent='確認退件';btn.className='btn btn-danger';}
+  btn.onclick=processApproval;
+  document.getElementById('approveModal').classList.add('show');
+}
+
+function processApproval() {
+  const {reqId,action}=_pAction;
+  const note=document.getElementById('modal-note').value.trim();
+  const req=state.data.requests.find(r=>r.id===reqId);
+  const u=state.currentUser;
+  if (!req) return;
+  req.approvalLog=req.approvalLog||[];
+  req.approvalLog.push({step:req.currentStep,approverId:u.id,action,note,time:today()});
+  if (action==='reject'){req.status='rejected';}
+  else {
+    req.currentStep=(req.currentStep||0)+1;
+    if (req.currentStep>=req.approvalChain.length){
+      req.status='approved';
+      const b=getBalance(req.userId,req.leaveTypeId);
+      if(b) b.usedDays+=req.days;
+    }
+  }
+  saveData();closeModal('approveModal');
+  showToast(action==='approve'?(req.status==='approved'?'✅ 全程核准，已扣除額度':'✅ 已核准，轉送下一審批人'):'✅ 已退件');
+  state.currentUser.role==='ceo'?renderCeoApprovals():renderApprovals();
+}
+
+// ═══════════════════════════════════════
+//  VIEW: TEAM OVERVIEW
+// ═══════════════════════════════════════
+function renderTeamOverview() {
+  const emps=state.data.users.filter(u=>u.role!=='hr'&&u.role!=='ceo');
+  render(`
+    <div class="topbar"><h2>📊 全員假別總覽</h2></div>
+    <div class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>員工</th><th>部門</th>
+          ${state.data.leaveTypes.map(lt=>`<th>${lt.emoji}<br>${lt.name}</th>`).join('')}
+          <th>總剩餘</th></tr></thead>
+        <tbody>${emps.map(emp=>{
+          const bals=state.data.leaveTypes.map(lt=>{const b=getBalance(emp.id,lt.id);return b?b.totalDays-b.usedDays:null;});
+          const total=bals.filter(v=>v!==null).reduce((s,v)=>s+v,0);
+          const trial=emp.hireDate&&isInTrial(emp.hireDate);
+          return `<tr>
+            <td><strong>${emp.name}</strong>${trial?'<br><span class="trial-badge">🔸試用期</span>':''}</td>
+            <td>${emp.dept}</td>
+            ${bals.map((v,i)=>{
+              const lt=state.data.leaveTypes[i];
+              const b=getBalance(emp.id,lt.id);
+              return v===null?'<td class="text-muted">-</td>':
+                `<td style="text-align:center;font-weight:700;color:${v<=1?'#DC2626':v<=3?'#D97706':'#16A34A'}">${v}<span class="text-muted">/${b?b.totalDays:0}</span></td>`;
+            }).join('')}
+            <td style="text-align:center"><strong style="color:#2563EB">${total}</strong></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+  `);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: ORG CHART — DIRECTION 1
+// ═══════════════════════════════════════
+function renderOrgChart() {
+  const isReadOnly = state.currentUser.role==='hr';
+  const allDepts = ['全部',...new Set(state.data.users.map(u=>u.dept))];
+  const filterDept = state.orgDept||'全部';
+  const displayUsers = state.data.users.filter(u=>u.role!=='ceo'&&(filterDept==='全部'||u.dept===filterDept));
+  const unassigned = state.data.users.filter(u=>!u.reportTo&&u.orgLevel!==1&&u.role!=='ceo'&&u.role!=='hr');
+
+  render(`
+    <div class="topbar">
+      <h2>🏗️ 審批架構設定</h2>
+      <span class="text-muted">${isReadOnly?'觀察模式・HR 可查看所有審批鏈':'設定直屬主管，審批鏈即時更新'}</span>
+    </div>
+
+    ${unassigned.length>0?`<div class="alert alert-warning">⚠️ <strong>${unassigned.length}</strong> 位員工尚未指定直屬主管：${unassigned.map(u=>`<span class="chip">${u.name}</span>`).join(' ')}</div>`:''}
+
+    <div class="card">
+      <!-- Department Tabs -->
+      <div class="dept-tabs">
+        ${allDepts.map(d=>`<span class="dept-tab ${d===filterDept?'active':''}" onclick="setOrgDept('${d}')">${d}</span>`).join('')}
+      </div>
+
+      <table class="org-table">
+        <thead><tr>
+          <th style="width:230px">人員</th>
+          ${isReadOnly?'':`<th style="width:210px">直屬主管</th>`}
+          <th>審批鏈</th>
+        </tr></thead>
+        <tbody>
+          <!-- CEO row -->
+          ${(()=>{
+            const ceo=state.data.users.find(u=>u.orgLevel===1);
+            if (!ceo) return '';
+            if (filterDept!=='全部'&&ceo.dept!==filterDept) return '';
+            return `<tr style="background:#FAF5FF">
+              <td><div class="person-cell">
+                <div class="role-dot" style="background:#7C3AED"></div>
+                <div><div class="p-name">${ceo.name}</div>
+                  <div class="p-meta"><span class="chip" style="background:#EDE9FE;color:#5B21B6">${ceo.dept}</span>
+                    <span class="text-muted">${ceo.title}</span>
+                    ${ceo.hireDate?`<span class="service-info">${serviceLabel(ceo.hireDate)}</span>`:''}
+                  </div>
+                </div>
+              </div></td>
+              ${isReadOnly?'':`<td><span class="text-muted" style="font-size:13px">最終審批人</span></td>`}
+              <td>${buildChainDisplay(ceo)}</td>
+            </tr>`;
+          })()}
+          <!-- Other users -->
+          ${displayUsers.map(u=>{
+            const roleColor=roleDotColor(u.role);
+            const trial=u.hireDate&&isInTrial(u.hireDate);
+            const opts=state.data.users.filter(x=>x.id!==u.id)
+              .map(x=>`<option value="${x.id}" ${u.reportTo===x.id?'selected':''}>${x.name}（${x.title}）</option>`).join('');
+            return `<tr>
+              <td><div class="person-cell">
+                <div class="role-dot" style="background:${roleColor}"></div>
+                <div>
+                  <div class="p-name">${u.name}</div>
+                  <div class="p-meta">
+                    ${roleBadge(u.role)}
+                    <span class="chip">${u.dept}</span>
+                    <span class="text-muted" style="font-size:12px">${u.title}</span>
+                    ${trial?'<span class="trial-badge">🔸試用期</span>':''}
+                  </div>
+                  ${u.hireDate?`<div class="service-info">到職 ${fmtDate(u.hireDate)}・服務 ${serviceLabel(u.hireDate)}</div>`:''}
+                </div>
+              </div></td>
+              ${isReadOnly?'':`<td>
+                ${u.role==='ceo'?'<span class="text-muted">最終審批人</span>':`
+                <select class="superior-select" onchange="updateSuperior(${u.id},this.value)">
+                  <option value="">— 未指定 —</option>
+                  ${opts}
+                </select>`}
+              </td>`}
+              <td>${buildChainDisplay(u)}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Legend -->
+    <div class="card">
+      <div class="card-title">📖 審批規則說明</div>
+      <div style="display:flex;gap:20px;flex-wrap:wrap;font-size:13px;color:#475569">
+        <div>👤 第三層員工請 <strong>1–2 天</strong>：只需直屬主管核准</div>
+        <div>👤 第三層員工請 <strong>3 天以上</strong>：直屬主管 → 執行長（依序）</div>
+        <div>🔵 第二層主管請假：<strong>不論天數</strong>，直接送執行長</div>
+        <div>🟡 HR：觀察者・記錄人，不列入審批鏈</div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:12px;flex-wrap:wrap">
+        <span class="chain-pill cp-employee">👤 員工</span>
+        <span class="chain-pill cp-manager">🔵 主管</span>
+        <span class="chain-pill cp-hr">🟡 HR</span>
+        <span class="chain-pill cp-ceo">👑 執行長</span>
+      </div>
+    </div>
+  `);
+}
+
+function setOrgDept(dept) { state.orgDept=dept; renderOrgChart(); }
+
+function updateSuperior(uid, val) {
+  const u=getUser(uid);
+  if (!u) return;
+  u.reportTo=val?parseInt(val):null;
+  if (val) {
+    const sup=getUser(parseInt(val));
+    if (sup) u.orgLevel=Math.min(sup.orgLevel+1,3);
+  }
+  saveData();
+  showToast(`✅ ${u.name} 的審批鏈已更新`);
+  renderOrgChart();
+}
+
+// ═══════════════════════════════════════
+//  VIEW: HR DASHBOARD
+// ═══════════════════════════════════════
+function renderHRDashboard() {
+  const emps=state.data.users.filter(u=>u.role!=='ceo');
+  const lts=state.data.leaveTypes;
+  render(`
+    <div class="topbar"><h2>📊 全員假別儀表板</h2>
+      <button class="btn btn-amber btn-sm" onclick="navigate('monthlyReport')">📋 產出月份報表</button>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-num" style="color:#2563EB">${emps.length}</div><div class="stat-label">員工人數</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#F59E0B">${state.data.requests.filter(r=>r.status==='pending').length}</div><div class="stat-label">審核中</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#D97706">${emps.filter(u=>u.hireDate&&isInTrial(u.hireDate)).length}</div><div class="stat-label">試用期員工</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#DC2626">${state.data.requests.filter(r=>r.status==='approved'&&r.startDate.startsWith(String(new Date().getFullYear()))).reduce((s,r)=>s+r.days,0)}</div><div class="stat-label">今年已核准天數</div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">👥 假別餘額總表（含原因・主管備註）</div>
+      <div class="table-wrap"><table class="hr-table">
+        <thead><tr><th>員工</th><th>部門</th><th>狀態</th>
+          ${lts.map(lt=>`<th>${lt.emoji}<br>${lt.name}${lt.deductible?'<br><span style="color:#DC2626;font-size:10px">★扣薪</span>':''}</th>`).join('')}
+          <th>總剩餘</th></tr></thead>
+        <tbody>${emps.map(emp=>{
+          const trial=emp.hireDate&&isInTrial(emp.hireDate);
+          const bals=lts.map(lt=>{const b=getBalance(emp.id,lt.id);return b?b.totalDays-b.usedDays:null;});
+          const total=bals.filter(v=>v!==null).reduce((s,v)=>s+v,0);
+          return `<tr>
+            <td><strong>${emp.name}</strong><br><span class="text-muted">${emp.title}</span></td>
+            <td>${emp.dept}</td>
+            <td>${trial?'<span class="trial-badge">🔸試用期</span>':roleBadge(emp.role)}</td>
+            ${bals.map((v,i)=>{const lt=lts[i];const b=getBalance(emp.id,lt.id);
+              return v===null?'<td class="text-muted">-</td>':
+                `<td style="text-align:center;font-weight:700;color:${v===0?'#DC2626':v<=2?'#D97706':'#334155'}">${v}/${b?b.totalDays:0}</td>`;
+            }).join('')}
+            <td style="text-align:center"><strong style="color:#2563EB">${total}</strong></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 所有請假記錄（含請假原因與主管備註）</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>員工</th><th>假別</th><th>期間</th><th>天數</th><th>原因</th><th>狀態</th><th>主管備註</th><th>申請日</th></tr></thead>
+        <tbody>${state.data.requests.slice().reverse().map(r=>{
+          const emp=getUser(r.userId);const lt=getLeaveType(r.leaveTypeId);
+          const lastLog=(r.approvalLog||[]).slice(-1)[0];
+          return `<tr>
+            <td><strong>${emp?.name}</strong></td>
+            <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+            <td style="white-space:nowrap">${fmtDate(r.startDate)}~${fmtDate(r.endDate)}</td>
+            <td>${r.days}天</td>
+            <td style="font-size:13px">${r.reason}</td>
+            <td>${statusBadge(r)}</td>
+            <td style="font-size:13px;color:#64748B">${lastLog?.note||'-'}</td>
+            <td class="text-muted">${fmtDate(r.createdAt)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+  `);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: MONTHLY REPORT
+// ═══════════════════════════════════════
+function renderMonthlyReport() {
+  const now=new Date();
+  render(`
+    <div class="topbar"><h2>📋 月份薪資報表</h2></div>
+    <div class="card">
+      <div class="report-header">
+        <div style="display:flex;align-items:center;gap:8px;font-weight:600">
+          報表月份：
+          <select id="repYear" style="padding:8px 12px;border:2px solid #E2E8F0;border-radius:8px;font-size:14px;outline:none">
+            ${[now.getFullYear()-1,now.getFullYear(),now.getFullYear()+1].map(y=>`<option value="${y}" ${y===now.getFullYear()?'selected':''}>${y} 年</option>`).join('')}
+          </select>
+          <select id="repMonth" style="padding:8px 12px;border:2px solid #E2E8F0;border-radius:8px;font-size:14px;outline:none">
+            ${Array.from({length:12},(_,i)=>`<option value="${i+1}" ${i+1===now.getMonth()+1?'selected':''}>${i+1} 月</option>`).join('')}
+          </select>
+          <button class="btn btn-primary btn-sm" onclick="genReport()">產出報表</button>
+        </div>
+        <button class="btn btn-success btn-sm" onclick="exportCSV()">📥 匯出 CSV</button>
+      </div>
+      <div id="reportContent"></div>
+    </div>
+  `);
+  genReport();
+}
+
+function getReportData() {
+  const year=parseInt(document.getElementById('repYear').value);
+  const month=parseInt(document.getElementById('repMonth').value);
+  const ym=`${year}-${String(month).padStart(2,'0')}`;
+  const emps=state.data.users.filter(u=>u.role!=='ceo');
+  const lts=state.data.leaveTypes;
+  return emps.map(emp=>{
+    const usedByType={};lts.forEach(lt=>{usedByType[lt.id]=0;});
+    state.data.requests.filter(r=>r.userId===emp.id&&r.status==='approved'&&(r.startDate.startsWith(ym)||r.endDate.startsWith(ym)))
+      .forEach(r=>{usedByType[r.leaveTypeId]=(usedByType[r.leaveTypeId]||0)+r.days;});
+    const totalUsed=Object.values(usedByType).reduce((s,v)=>s+v,0);
+    const deductDays=lts.filter(lt=>lt.deductible).reduce((s,lt)=>s+(usedByType[lt.id]||0),0);
+    return {emp,usedByType,totalUsed,deductDays};
+  });
+}
+
+function genReport() {
+  const year=parseInt(document.getElementById('repYear').value);
+  const month=parseInt(document.getElementById('repMonth').value);
+  const data=getReportData();const lts=state.data.leaveTypes;
+  document.getElementById('reportContent').innerHTML=`
+    <div style="margin-bottom:12px;font-size:13px;color:#64748B">${year} 年 ${month} 月・${data.length} 位員工・扣薪假別：${lts.filter(l=>l.deductible).map(l=>l.name).join('、')||'無'}</div>
+    <div class="table-wrap"><table class="hr-table">
+      <thead><tr><th>員工</th><th>部門</th><th>職稱</th>
+        ${lts.map(lt=>`<th>${lt.emoji} ${lt.name}${lt.deductible?'<br><span style="color:#DC2626;font-size:10px">★扣薪</span>':''}</th>`).join('')}
+        <th>合計</th><th style="color:#DC2626">應扣薪</th></tr></thead>
+      <tbody>${data.map(row=>`<tr>
+        <td><strong>${row.emp.name}</strong></td><td>${row.emp.dept}</td><td class="text-muted">${row.emp.title}</td>
+        ${lts.map(lt=>{const v=row.usedByType[lt.id]||0;
+          return `<td style="font-weight:${v>0?700:400};color:${v>0&&lt.deductible?'#DC2626':v>0?'#334155':'#94A3B8'}">${v>0?v+'天':'-'}</td>`;
+        }).join('')}
+        <td><strong>${row.totalUsed>0?row.totalUsed+'天':'-'}</strong></td>
+        <td class="${row.deductDays>0?'deduct-cell':'text-muted'}">${row.deductDays>0?row.deductDays+'天':'-'}</td>
+      </tr>`).join('')}</tbody>
+      <tfoot><tr style="background:#F8FAFC;font-weight:700">
+        <td colspan="3">合計</td>
+        ${lts.map(lt=>{const t=data.reduce((s,r)=>s+(r.usedByType[lt.id]||0),0);return `<td>${t>0?t+'天':'-'}</td>`;}).join('')}
+        <td>${data.reduce((s,r)=>s+r.totalUsed,0)}天</td>
+        <td style="color:#DC2626">${data.reduce((s,r)=>s+r.deductDays,0)}天</td>
+      </tr></tfoot>
+    </table></div>`;
+}
+
+function exportCSV() {
+  const year=parseInt(document.getElementById('repYear').value);
+  const month=parseInt(document.getElementById('repMonth').value);
+  const data=getReportData();const lts=state.data.leaveTypes;
+  const headers=['員工姓名','部門','職稱',...lts.map(lt=>lt.name),'合計請假天數','應扣薪天數'];
+  const rows=data.map(row=>[row.emp.name,row.emp.dept,row.emp.title,...lts.map(lt=>row.usedByType[lt.id]||0),row.totalUsed,row.deductDays]);
+  const csv=[headers,...rows].map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  const blob=new Blob(['﻿'+csv],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`請假報表_${year}年${month}月.csv`;a.click();
+  showToast(`📥 已匯出 ${year}年${month}月報表`);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: EMPLOYEES
+// ═══════════════════════════════════════
+function renderEmployees() {
+  const emps=state.data.users.filter(u=>u.role!=='ceo');
+  render(`
+    <div class="topbar"><h2>👥 員工假別管理</h2>
+      <button class="btn btn-primary btn-sm" onclick="addEmployee()">➕ 新增員工</button>
+    </div>
+    ${emps.map(emp=>{
+      const trial=emp.hireDate&&isInTrial(emp.hireDate);
+      return `<div class="card">
+        <div class="card-title">
+          ${roleBadge(emp.role)} ${emp.name}
+          <span class="chip">${emp.dept}</span>
+          <span class="text-muted">${emp.title}</span>
+          ${trial?'<span class="trial-badge">🔸 試用期</span>':''}
+          <span class="text-muted" style="font-size:12px;margin-left:4px">${emp.hireDate?serviceLabel(emp.hireDate):''}</span>
+          <button class="btn btn-sm btn-ghost" onclick="removeEmployee(${emp.id})" style="margin-left:auto">🗑️ 移除</button>
+        </div>
+        <div class="form-grid" style="margin-bottom:16px;max-width:600px">
+          <div class="form-group">
+            <label>到職日</label>
+            <input type="date" value="${emp.hireDate||''}" onchange="updateEmpField(${emp.id},'hireDate',this.value)" style="padding:8px 12px">
+            ${emp.hireDate?`<div class="form-hint">服務年資：${serviceLabel(emp.hireDate)}${trial?' ・試用期中':''}</div>`:''}
+          </div>
+          <div class="form-group" style="display:flex;align-items:flex-end">
+            <button class="btn btn-purple btn-sm" onclick="autoCalcLeaveQuota(${emp.id})">🔄 自動計算特別假 / 福利假</button>
+          </div>
+        </div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>假別</th><th>薪資</th><th>總天數</th><th>已使用</th><th>剩餘</th><th>使用期限</th><th>扣薪</th><th>操作</th></tr></thead>
+          <tbody>${state.data.leaveTypes.map(lt=>{
+            const b=getBalance(emp.id,lt.id);
+            if (b) return `<tr>
+              <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span>${lt.requiresAnnualFirst?'<br><span style="font-size:10px;color:#7C3AED">需先用完特別假</span>':''}</td>
+              <td class="text-muted" style="font-size:12px">${payTypeLabel(lt.payType)}</td>
+              <td><input class="quota-input" type="number" min="0" value="${b.totalDays}" onchange="updateQuota(${emp.id},${lt.id},'total',this.value)"></td>
+              <td><input class="quota-input" type="number" min="0" value="${b.usedDays}"  onchange="updateQuota(${emp.id},${lt.id},'used',this.value)"></td>
+              <td><strong style="color:${b.totalDays-b.usedDays>0?'#16A34A':'#DC2626'}">${b.totalDays-b.usedDays}</strong> 天</td>
+              <td><input class="date-input-sm" type="date" value="${b.expiryDate||''}" onchange="updateQuota(${emp.id},${lt.id},'expiry',this.value)"></td>
+              <td>${lt.deductible?'<span style="color:#DC2626;font-weight:700">★</span>':'-'}</td>
+              <td><button class="btn btn-sm btn-danger" onclick="removeBalance(${emp.id},${lt.id})">移除</button></td>
+            </tr>`;
+            return `<tr>
+              <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
+              <td class="text-muted">${payTypeLabel(lt.payType)}</td>
+              <td colspan="5" class="text-muted">尚未設定</td>
+              <td><button class="btn btn-sm btn-primary" onclick="addBalance(${emp.id},${lt.id})">➕ 新增</button></td>
+            </tr>`;
+          }).join('')}</tbody>
+        </table></div>
+      </div>`;
+    }).join('')}
+  `);
+}
+
+function updateEmpField(uid,field,val) {
+  const u=getUser(uid);if(!u)return;u[field]=val;saveData();showToast('✅ 已更新');renderEmployees();
+}
+function updateQuota(uid,ltid,field,val) {
+  const b=getBalance(uid,ltid);if(!b)return;
+  if(field==='total')b.totalDays=parseFloat(val)||0;
+  if(field==='used')b.usedDays=parseFloat(val)||0;
+  if(field==='expiry')b.expiryDate=val;
+  saveData();showToast('✅ 已更新');
+}
+function addBalance(uid,ltid) {
+  const lt=getLeaveType(ltid);
+  const expiry=lt.calcType==='anniversary'?calcNextAnniversary(getUser(uid)?.hireDate||''):
+    `${new Date().getFullYear()}-12-31`;
+  state.data.balances.push({userId:uid,leaveTypeId:ltid,totalDays:0,usedDays:0,expiryDate:expiry});
+  saveData();renderEmployees();
+}
+function removeBalance(uid,ltid) {
+  state.data.balances=state.data.balances.filter(b=>!(b.userId===uid&&b.leaveTypeId===ltid));
+  saveData();renderEmployees();
+}
+function removeEmployee(uid) {
+  const m=document.getElementById('deleteModal');
+  document.getElementById('delete-sub').textContent=`確定要移除員工「${getUser(uid)?.name}」嗎？`;
+  document.getElementById('delete-confirm-btn').onclick=()=>{
+    state.data.users=state.data.users.filter(u=>u.id!==uid);
+    state.data.balances=state.data.balances.filter(b=>b.userId!==uid);
+    state.data.requests=state.data.requests.filter(r=>r.userId!==uid);
+    saveData();closeModal('deleteModal');showToast('✅ 已移除');renderEmployees();
+  };
+  m.classList.add('show');
+}
+function addEmployee() {
+  const name=prompt('員工姓名：');if(!name)return;
+  const email=prompt('Email：')||'';
+  const dept=prompt('部門：')||'未分配';
+  const title=prompt('職稱：')||'員工';
+  const hireDate=prompt('到職日（YYYY-MM-DD）：')||'';
+  const newId=Math.max(...state.data.users.map(u=>u.id),0)+1;
+  state.data.users.push({id:newId,name:name.trim(),email,role:'employee',dept,title,orgLevel:3,reportTo:null,hireDate});
+  state.data.leaveTypes.forEach(lt=>{
+    const expiry=lt.calcType==='anniversary'?calcNextAnniversary(hireDate):`${new Date().getFullYear()}-12-31`;
+    state.data.balances.push({userId:newId,leaveTypeId:lt.id,totalDays:0,usedDays:0,expiryDate:expiry});
+  });
+  document.getElementById('userSelect').innerHTML+=`<option value="${newId}">${name.trim()}（員工・${title}）</option>`;
+  saveData();showToast(`✅ 已新增 ${name}`);renderEmployees();
+}
+
+// ═══════════════════════════════════════
+//  VIEW: SETTINGS
+// ═══════════════════════════════════════
+function renderSettings() {
+  const s=state.data.settings;
+  render(`
+    <div class="topbar"><h2>⚙️ 系統設定</h2></div>
+    <div class="card">
+      <div class="card-title">🔗 Google 整合設定</div>
+      <div class="alert alert-info">ℹ️ 部署 Google Apps Script 後填入以下資訊，啟用 Email 通知與 Google Calendar 自動同步。</div>
+      <div class="settings-section">
+        <h3>Apps Script 後端網址</h3>
+        <div class="input-row">
+          <div class="form-group" style="flex:1;margin:0"><input type="text" id="set-url" value="${s.appsScriptUrl}" placeholder="https://script.google.com/macros/s/YOUR_ID/exec"></div>
+          <button class="btn btn-primary" onclick="saveSetting('appsScriptUrl','set-url')">儲存</button>
+        </div>
+      </div>
+      <div class="settings-section">
+        <h3>共用 Google Calendar ID</h3>
+        <div class="input-row">
+          <div class="form-group" style="flex:1;margin:0"><input type="text" id="set-cal" value="${s.googleCalendarId}" placeholder="xxx@group.calendar.google.com"></div>
+          <button class="btn btn-primary" onclick="saveSetting('googleCalendarId','set-cal')">儲存</button>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 假別類型管理</div>
+      <div class="table-wrap"><table>
+        <thead><tr><th>Emoji</th><th>假別名稱</th><th>顏色</th><th>薪資</th><th>扣薪假別</th><th></th></tr></thead>
+        <tbody>${state.data.leaveTypes.map(lt=>`<tr>
+          <td><input type="text" value="${lt.emoji}" style="width:48px;text-align:center;padding:5px;border:1px solid #E2E8F0;border-radius:6px" onchange="updateLT(${lt.id},'emoji',this.value)"></td>
+          <td><input type="text" value="${lt.name}" style="width:100px;padding:5px;border:1px solid #E2E8F0;border-radius:6px" onchange="updateLT(${lt.id},'name',this.value)"></td>
+          <td><input type="color" value="${lt.color}" style="width:46px;height:30px;border:none;cursor:pointer" onchange="updateLT(${lt.id},'color',this.value)"></td>
+          <td><select style="padding:4px 8px;border:1px solid #E2E8F0;border-radius:6px;font-size:13px" onchange="updateLT(${lt.id},'payType',this.value)">
+            <option value="full" ${lt.payType==='full'?'selected':''}>全薪</option>
+            <option value="half" ${lt.payType==='half'?'selected':''}>半薪</option>
+            <option value="none" ${lt.payType==='none'?'selected':''}>不給薪</option>
+          </select></td>
+          <td><input type="checkbox" ${lt.deductible?'checked':''} onchange="updateLT(${lt.id},'deductible',this.checked)" style="width:18px;height:18px;cursor:pointer"></td>
+          <td><button class="btn btn-sm btn-danger" onclick="deleteLT(${lt.id})">刪除</button></td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      <div style="margin-top:12px"><button class="btn btn-ghost" onclick="addLT()">➕ 新增假別</button></div>
+    </div>
+    <div class="card">
+      <div class="card-title" style="color:#DC2626">⚠️ 危險操作</div>
+      <button class="btn btn-danger" onclick="resetAll()">🗑️ 清除所有資料（恢復預設）</button>
+    </div>
+  `);
+}
+
+function saveSetting(key,inputId){state.data.settings[key]=document.getElementById(inputId).value.trim();saveData();showToast('✅ 已儲存');}
+function updateLT(id,field,val){const lt=state.data.leaveTypes.find(t=>t.id===id);if(lt){lt[field]=val;saveData();}}
+function addLT(){const name=prompt('假別名稱：');if(!name)return;const newId=Math.max(...state.data.leaveTypes.map(t=>t.id),0)+1;state.data.leaveTypes.push({id:newId,name:name.trim(),color:'#6B7280',emoji:'📋',deductible:false,payType:'full',calcType:'event',autoCalc:null});saveData();showToast(`✅ 已新增 ${name}`);renderSettings();}
+function deleteLT(id){state.data.leaveTypes=state.data.leaveTypes.filter(t=>t.id!==id);state.data.balances=state.data.balances.filter(b=>b.leaveTypeId!==id);saveData();showToast('✅ 已刪除');renderSettings();}
+function resetAll(){if(!confirm('確定要清除所有資料並恢復預設值嗎？此操作無法復原！'))return;localStorage.removeItem(STORAGE_KEY);location.reload();}
+
+// INIT
+initLogin();
+</script>
+</body>
+</html>
