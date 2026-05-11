@@ -198,6 +198,16 @@ textarea{resize:vertical;min-height:80px}
 
 /* SERVICE INFO */
 .service-info{font-size:11px;color:#94A3B8;margin-top:2px}
+
+/* PASSWORD */
+.pwd-wrap{position:relative}
+.pwd-wrap input{padding-right:44px!important}
+.pwd-toggle{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:17px;color:#94A3B8;padding:4px;line-height:1}
+.pwd-toggle:hover{color:#475569}
+.login-input{width:100%;padding:12px 16px;border:2px solid #E2E8F0;border-radius:10px;font-size:15px;background:#F8FAFC;margin-bottom:14px;outline:none;transition:border .2s;box-sizing:border-box}
+.login-input:focus{border-color:#2563EB;background:#fff}
+.login-label{display:block;font-size:13px;font-weight:600;color:#374151;text-align:left;margin-bottom:5px}
+.login-error{display:none;color:#DC2626;font-size:13px;margin-bottom:12px;text-align:left;background:#FEF2F2;border:1px solid #FECACA;padding:8px 12px;border-radius:8px}
 </style>
 </head>
 <body>
@@ -206,11 +216,13 @@ textarea{resize:vertical;min-height:80px}
 <div id="loginScreen">
   <div class="login-card">
     <div class="logo">📋</div>
-    <h1>員工請假系統</h1>
-    <p>請選擇您的帳號登入</p>
-    <div class="role-pills" id="loginRolePills"></div>
-    <select id="userSelect"><option value="">-- 選擇使用者 --</option></select>
-    <button class="btn-login" onclick="login()">登入系統</button>
+    <h1>員工假勤系統</h1>
+    <p style="margin-bottom:24px">請選擇登入身份</p>
+    <select id="userSelect">
+      <option value="">— 請選擇 —</option>
+    </select>
+    <div class="login-error" id="loginError"></div>
+    <button class="btn-login" style="margin-top:8px" onclick="login()">登入系統</button>
   </div>
 </div>
 
@@ -234,6 +246,7 @@ textarea{resize:vertical;min-height:80px}
   <div class="modal">
     <h3 id="modal-title">審核請假申請</h3>
     <p class="sub" id="modal-sub"></p>
+    <div id="modal-warning" style="display:none" class="alert alert-warning"></div>
     <div class="form-group">
       <label>審核備註（選填）</label>
       <textarea id="modal-note" rows="3" placeholder="輸入審核說明..."></textarea>
@@ -254,6 +267,69 @@ textarea{resize:vertical;min-height:80px}
     </div>
   </div>
 </div>
+<!-- OVERTIME APPROVAL MODAL -->
+<div class="modal-bg" id="overtimeModal">
+  <div class="modal">
+    <h3 id="ot-modal-title">審核加班申請</h3>
+    <p class="sub" id="ot-modal-sub"></p>
+    <div class="form-group">
+      <label>審核備註（選填）</label>
+      <textarea id="ot-modal-note" rows="3" placeholder="輸入審核說明..."></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('overtimeModal')">取消</button>
+      <button class="btn" id="ot-modal-confirm-btn">確認</button>
+    </div>
+  </div>
+</div>
+
+<!-- EMPLOYEE EDIT MODAL -->
+<div class="modal-bg" id="employeeModal">
+  <div class="modal" style="width:560px;max-width:95vw">
+    <h3 id="empModal-title">員工資料</h3>
+    <p class="sub" id="empModal-sub"></p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label>姓名 <span style="color:#DC2626">*</span></label>
+        <input type="text" id="emp-name" placeholder="員工姓名">
+      </div>
+      <div class="form-group">
+        <label>Email</label>
+        <input type="text" id="emp-email" placeholder="email@company.com">
+      </div>
+      <div class="form-group">
+        <label>部門 <span style="color:#DC2626">*</span></label>
+        <input type="text" id="emp-dept" placeholder="部門名稱">
+      </div>
+      <div class="form-group">
+        <label>職稱</label>
+        <input type="text" id="emp-title" placeholder="職稱">
+      </div>
+      <div class="form-group">
+        <label>角色</label>
+        <select class="form-control" id="emp-role">
+          <option value="employee">員工</option>
+          <option value="manager">主管</option>
+          <option value="hr">HR</option>
+          <option value="ceo">CEO</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>到職日</label>
+        <input type="date" id="emp-hireDate">
+      </div>
+      <div class="form-group full">
+        <label>直屬主管</label>
+        <select class="form-control" id="emp-reportTo"></select>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('employeeModal')">取消</button>
+      <button class="btn btn-primary" onclick="saveEmployeeModal()">儲存</button>
+    </div>
+  </div>
+</div>
+
 <div id="toast"></div>
 
 <script>
@@ -266,13 +342,11 @@ const LT_WELFARE = 2;  // 福利休假
 
 const defaultData = {
   users: [
-    {id:1, name:'王小明',   email:'ming@co.com',    role:'employee', dept:'編輯部',  title:'資深編輯',   orgLevel:3, reportTo:4, hireDate:'2023-03-15'},
-    {id:2, name:'李小華',   email:'hua@co.com',     role:'employee', dept:'研究部',  title:'研究助理',   orgLevel:3, reportTo:5, hireDate:'2025-11-01'},
-    {id:3, name:'陳小芳',   email:'fang@co.com',    role:'employee', dept:'編輯部',  title:'編輯',       orgLevel:3, reportTo:4, hireDate:'2026-03-01'},
-    {id:4, name:'林主編',   email:'editor@co.com',  role:'manager',  dept:'編輯部',  title:'主編',       orgLevel:2, reportTo:6, hireDate:'2021-06-01'},
-    {id:5, name:'張研究主管',email:'rsrch@co.com',  role:'manager',  dept:'研究部',  title:'研究部主管', orgLevel:2, reportTo:6, hireDate:'2020-01-15'},
-    {id:6, name:'陳執行長', email:'ceo@co.com',     role:'ceo',      dept:'管理部',  title:'執行長',     orgLevel:1, reportTo:null, hireDate:'2019-01-01'},
-    {id:7, name:'人資小美', email:'hr@co.com',      role:'hr',       dept:'人資部',  title:'HR 專員',    orgLevel:2, reportTo:6, hireDate:'2022-09-01'},
+    {id:1, name:'James Chen',  email:'james.chen@reccessary.com',  role:'employee', dept:'業務部', title:'業務專員',   orgLevel:3, reportTo:2, hireDate:'2023-03-15'},
+    {id:2, name:'Sherry Hu',   email:'sherry.hu@reccessary.com',   role:'manager',  dept:'業務部', title:'業務主管',   orgLevel:2, reportTo:3, hireDate:'2021-06-01'},
+    {id:3, name:'Jason Huang', email:'jason.huang@reccessary.com', role:'ceo',      dept:'管理部', title:'執行長',     orgLevel:1, reportTo:null, hireDate:'2019-01-01'},
+    {id:4, name:'Kelly Lee',   email:'kelly.lee@reccessary.com',   role:'hr',       dept:'人資部', title:'HR Manager', orgLevel:2, reportTo:3, hireDate:'2022-09-01'},
+    {id:5, name:'Vardi',       email:'vardi@reccessary.com',       role:'hr',       dept:'人資部', title:'HR 專員',    orgLevel:2, reportTo:4, hireDate:'2024-01-01'},
   ],
   leaveTypes: [
     {id:1, name:'特別休假', color:'#2563EB', emoji:'🏖️', deductible:false, payType:'full', calcType:'anniversary', autoCalc:'annual',  requiresAnnualFirst:false},
@@ -286,32 +360,32 @@ const defaultData = {
     {id:9, name:'陪產假',   color:'#10B981', emoji:'👶', deductible:false, payType:'full', calcType:'event',       autoCalc:null,      maxDays:5},
   ],
   balances: [
-    {userId:1, leaveTypeId:1, totalDays:14, usedDays:3,  expiryDate:'2027-03-15'},
-    {userId:1, leaveTypeId:2, totalDays:5,  usedDays:0,  expiryDate:'2027-03-15'},
-    {userId:1, leaveTypeId:3, totalDays:30, usedDays:1,  expiryDate:'2026-12-31'},
-    {userId:1, leaveTypeId:4, totalDays:14, usedDays:2,  expiryDate:'2026-12-31'},
-    {userId:2, leaveTypeId:1, totalDays:3,  usedDays:0,  expiryDate:'2026-11-01'},
-    {userId:2, leaveTypeId:2, totalDays:4,  usedDays:0,  expiryDate:'2026-11-01'},
-    {userId:2, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:2, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:3, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:3, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:4, leaveTypeId:1, totalDays:15, usedDays:0,  expiryDate:'2027-06-01'},
-    {userId:4, leaveTypeId:2, totalDays:5,  usedDays:0,  expiryDate:'2027-06-01'},
-    {userId:4, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:4, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:5, leaveTypeId:1, totalDays:15, usedDays:2,  expiryDate:'2027-01-15'},
-    {userId:5, leaveTypeId:2, totalDays:6,  usedDays:0,  expiryDate:'2027-01-15'},
-    {userId:5, leaveTypeId:3, totalDays:30, usedDays:0,  expiryDate:'2026-12-31'},
-    {userId:5, leaveTypeId:4, totalDays:14, usedDays:0,  expiryDate:'2026-12-31'},
+    // 王小明 (員工, 到職 2023-03-15, 約 2.2 年)
+    {userId:1, leaveTypeId:1, totalDays:10, usedDays:0, expiryDate:'2027-03-15'},
+    {userId:1, leaveTypeId:2, totalDays:4,  usedDays:0, expiryDate:'2027-03-15'},
+    {userId:1, leaveTypeId:3, totalDays:30, usedDays:0, expiryDate:'2026-12-31'},
+    {userId:1, leaveTypeId:4, totalDays:14, usedDays:0, expiryDate:'2026-12-31'},
+    // 林主管 (主管, 到職 2021-06-01, 約 4.9 年)
+    {userId:2, leaveTypeId:1, totalDays:15, usedDays:0, expiryDate:'2027-06-01'},
+    {userId:2, leaveTypeId:2, totalDays:5,  usedDays:0, expiryDate:'2027-06-01'},
+    {userId:2, leaveTypeId:3, totalDays:30, usedDays:0, expiryDate:'2026-12-31'},
+    {userId:2, leaveTypeId:4, totalDays:14, usedDays:0, expiryDate:'2026-12-31'},
+    // 人資小美 (HR, 到職 2022-09-01, 約 3.6 年)
+    {userId:3, leaveTypeId:1, totalDays:15, usedDays:0, expiryDate:'2027-09-01'},
+    {userId:3, leaveTypeId:2, totalDays:5,  usedDays:0, expiryDate:'2027-09-01'},
+    {userId:3, leaveTypeId:3, totalDays:30, usedDays:0, expiryDate:'2026-12-31'},
+    {userId:3, leaveTypeId:4, totalDays:14, usedDays:0, expiryDate:'2026-12-31'},
+    // 小J (測試帳號)
+    {userId:5, leaveTypeId:1, totalDays:10, usedDays:0, expiryDate:'2027-01-01'},
+    {userId:5, leaveTypeId:2, totalDays:4,  usedDays:0, expiryDate:'2027-01-01'},
+    {userId:5, leaveTypeId:3, totalDays:30, usedDays:0, expiryDate:'2026-12-31'},
+    {userId:5, leaveTypeId:4, totalDays:14, usedDays:0, expiryDate:'2026-12-31'},
   ],
-  requests: [
-    {id:1, userId:1, leaveTypeId:1, startDate:'2026-04-01', endDate:'2026-04-03', days:3, halfDay:false, reason:'家庭旅遊', status:'approved', approvalChain:[4,6], currentStep:2, approvalLog:[{step:0,approverId:4,action:'approved',note:'祝旅途愉快',time:'2026-03-26'},{step:1,approverId:6,action:'approved',note:'',time:'2026-03-27'}], createdAt:'2026-03-25'},
-    {id:2, userId:2, leaveTypeId:3, startDate:'2026-04-10', endDate:'2026-04-10', days:1, halfDay:false, reason:'身體不適', status:'pending',  approvalChain:[5], currentStep:0, approvalLog:[], createdAt:'2026-04-09'},
-    {id:3, userId:1, leaveTypeId:4, startDate:'2026-05-05', endDate:'2026-05-06', days:2, halfDay:false, reason:'搬家',     status:'pending',  approvalChain:[4], currentStep:0, approvalLog:[], createdAt:'2026-04-30'},
-  ],
+  requests: [],
   settings: {appsScriptUrl:'', googleCalendarId:'', companyName:'碳思能見'},
-  nextId: 4
+  overtimes: [],
+  nextId: 1,
+  nextOvertimeId: 1
 };
 
 let state = {currentUser:null, view:'dashboard', data:null, orgDept:'全部'};
@@ -389,8 +463,17 @@ function checkLeaveEligibility(userId, leaveTypeId) {
 
   if (leaveTypeId === LT_WELFARE) {
     const ab = getBalance(userId, LT_ANNUAL);
-    if (ab && (ab.totalDays - ab.usedDays) > 0)
-      return {ok:false, msg:`須先用完特別休假（剩餘 ${ab.totalDays-ab.usedDays} 天）才可申請福利休假`};
+    if (ab && (ab.totalDays - ab.usedDays) > 0) {
+      const remHours = daysToHours(ab.totalDays - ab.usedDays);
+      // 例外：待審核的特休申請已足夠修完剩餘特休 → 允許，但給予提示
+      const pendingAnnualHours = state.data.requests
+        .filter(r => r.userId === userId && r.leaveTypeId === LT_ANNUAL && r.status === 'pending')
+        .reduce((sum, r) => sum + daysToHours(r.days), 0);
+      if (pendingAnnualHours >= remHours) {
+        return {ok: true, msg: '', warning: `您有 ${pendingAnnualHours} 小時特休待審核，核准後將修完剩餘特休（${remHours} 小時），故允許同時申請福利假。`};
+      }
+      return {ok: false, msg: `尚有 ${remHours} 小時特休未修完，須先將特休全數用完才可申請福利假。`};
+    }
   }
 
   if (lt && lt.yearMax) {
@@ -446,6 +529,20 @@ function roleBadge(role) { return `<span class="rbadge rb-${role}">${roleLabel(r
 function roleDotColor(role) { return {employee:'#16A34A',manager:'#2563EB',hr:'#D97706',ceo:'#7C3AED'}[role]||'#64748B'; }
 
 function payTypeLabel(pt) { return {full:'全薪',half:'半薪',none:'不給薪'}[pt]||''; }
+function daysToHours(days) { return Math.round(days * 8 * 10) / 10; }
+function hoursToDays(hours) { return Math.round(hours / 8 * 1000) / 1000; }
+function generatePassword() {
+  const chars='ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  let pwd='';
+  for(let i=0;i<8;i++) pwd+=chars[Math.floor(Math.random()*chars.length)];
+  // Ensure at least 1 letter and 1 digit
+  if(!/[A-Za-z]/.test(pwd)||!/[0-9]/.test(pwd)) return generatePassword();
+  return pwd;
+}
+function togglePwd(id) {
+  const el=document.getElementById(id);
+  if(el) el.type=el.type==='password'?'text':'password';
+}
 
 function statusBadge(req) {
   if (req.status==='approved') return '<span class="badge badge-approved">✅ 已核准</span>';
@@ -535,26 +632,25 @@ function buildChainDisplay(u) {
 // ═══════════════════════════════════════
 function initLogin() {
   loadData();
-  const sel = document.getElementById('userSelect');
-  const pills = document.getElementById('loginRolePills');
-  const rc = {employee:'#0F766E',manager:'#1D4ED8',hr:'#D97706',ceo:'#7C3AED'};
-  [...new Set(state.data.users.map(u=>u.role))].forEach(r => {
-    pills.innerHTML += `<span class="role-pill" style="background:${rc[r]};color:#fff">${roleLabel(r)}</span>`;
-  });
-  state.data.users.forEach(u => {
-    sel.innerHTML += `<option value="${u.id}">${u.name}（${roleLabel(u.role)}・${u.title}）</option>`;
-  });
+  const sel=document.getElementById('userSelect');
+  sel.innerHTML='<option value="">— 請選擇 —</option>'+
+    state.data.users.map(u=>`<option value="${u.id}">${u.name}（${roleLabel(u.role)}・${u.title}）</option>`).join('');
 }
 
 function login() {
-  const uid = parseInt(document.getElementById('userSelect').value);
-  if (!uid) { showToast('⚠️ 請選擇使用者','warn'); return; }
-  state.currentUser = state.data.users.find(u=>u.id===uid);
+  const sel=document.getElementById('userSelect');
+  const uid=parseInt(sel.value);
+  const errEl=document.getElementById('loginError');
+  if (!uid){errEl.textContent='請選擇登入身份';errEl.style.display='block';return;}
+  const user=state.data.users.find(u=>u.id===uid);
+  if (!user){errEl.textContent='找不到使用者';errEl.style.display='block';return;}
+  errEl.style.display='none';
+  state.currentUser=user;
   document.getElementById('loginScreen').style.display='none';
   document.getElementById('mainApp').style.display='block';
   updateSidebar();
-  const def = {employee:'dashboard',manager:'dashboard',hr:'hrDashboard',ceo:'ceoApprovals'};
-  navigate(def[state.currentUser.role]||'dashboard');
+  const def={employee:'dashboard',manager:'dashboard',hr:'dashboard',ceo:'ceoApprovals'};
+  navigate(def[user.role]||'dashboard');
 }
 
 function logout() {
@@ -562,6 +658,7 @@ function logout() {
   document.getElementById('mainApp').style.display='none';
   document.getElementById('loginScreen').style.display='flex';
   document.getElementById('userSelect').value='';
+  document.getElementById('loginError').style.display='none';
 }
 
 function updateSidebar() {
@@ -578,29 +675,44 @@ function updateSidebar() {
       {view:'apply',icon:'✏️',label:'申請請假'},
       {view:'myLeaves',icon:'📅',label:'我的請假記錄'},
       {view:'balances',icon:'💰',label:'假別餘額'},
+      {view:'applyOvertime',icon:'⏰',label:'申請加班'},
+      {view:'myOvertimes',icon:'📋',label:'我的加班記錄'},
     ],
     manager:[
       {view:'dashboard',icon:'🏠',label:'儀表板'},
       {view:'apply',icon:'✏️',label:'申請請假'},
       {view:'myLeaves',icon:'📅',label:'我的請假記錄'},
       {view:'balances',icon:'💰',label:'假別餘額'},
+      {view:'applyOvertime',icon:'⏰',label:'申請加班'},
+      {view:'myOvertimes',icon:'📋',label:'我的加班記錄'},
       {divider:'主管功能'},
       {view:'approvals',icon:'✅',label:'待審核申請'},
+      {view:'overtimeApprovals',icon:'⏰',label:'加班審核'},
       {view:'teamOverview',icon:'📊',label:'團隊假別總覽'},
       {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
       {view:'employees',icon:'👥',label:'員工假別管理'},
       {view:'settings',icon:'⚙️',label:'系統設定'},
     ],
     hr:[
+      {view:'dashboard',icon:'🏠',label:'儀表板'},
+      {view:'apply',icon:'✏️',label:'申請請假'},
+      {view:'myLeaves',icon:'📅',label:'我的請假記錄'},
+      {view:'balances',icon:'💰',label:'假別餘額'},
+      {view:'applyOvertime',icon:'⏰',label:'申請加班'},
+      {view:'myOvertimes',icon:'📋',label:'我的加班記錄'},
+      {divider:'HR 功能'},
       {view:'hrDashboard',icon:'📊',label:'全員假別儀表板'},
       {view:'monthlyReport',icon:'📋',label:'月份薪資報表'},
+      {view:'employeeAccounts',icon:'👤',label:'員工帳號管理'},
       {view:'employees',icon:'👥',label:'員工假別管理'},
       {view:'orgChart',icon:'🏗️',label:'審批架構總覽'},
+      {view:'overtimeReport',icon:'⏰',label:'加班記錄總覽'},
       {view:'settings',icon:'⚙️',label:'系統設定'},
     ],
     ceo:[
       {view:'dashboard',icon:'🏠',label:'儀表板'},
-      {view:'ceoApprovals',icon:'✅',label:'待我審核'},
+      {view:'ceoApprovals',icon:'✅',label:'待我審核（請假）'},
+      {view:'ceoOvertimeApprovals',icon:'⏰',label:'待我審核（加班）'},
       {view:'teamOverview',icon:'📊',label:'全員假別總覽'},
       {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
     ],
@@ -620,7 +732,11 @@ function navigate(view) {
   ({dashboard:renderDashboard,apply:renderApply,myLeaves:renderMyLeaves,
     balances:renderBalances,approvals:renderApprovals,ceoApprovals:renderCeoApprovals,
     teamOverview:renderTeamOverview,orgChart:renderOrgChart,hrDashboard:renderHRDashboard,
-    monthlyReport:renderMonthlyReport,employees:renderEmployees,settings:renderSettings
+    monthlyReport:renderMonthlyReport,employees:renderEmployees,settings:renderSettings,
+    applyOvertime:renderApplyOvertime,myOvertimes:renderMyOvertimes,
+    overtimeApprovals:renderOvertimeApprovals,ceoOvertimeApprovals:renderCeoOvertimeApprovals,
+    overtimeReport:renderHROvertimeReport,employeeAccounts:renderEmployeeAccounts,
+    changePassword:renderChangePassword
   })[view]?.();
 }
 
@@ -701,21 +817,42 @@ function renderApply() {
               const rem=b?b.totalDays-b.usedDays:null;
               const elig=checkLeaveEligibility(u.id,lt.id);
               const disabled=!elig.ok?'disabled':'';
-              const remStr=rem!==null?`剩餘 ${rem} 天`:(lt.calcType==='event'?'依情況':'-');
+              let remStr;
+              if (lt.id===LT_ANNUAL&&rem!==null) remStr=`剩餘 ${daysToHours(rem)} 小時`;
+              else remStr=rem!==null?`剩餘 ${rem} 天`:(lt.calcType==='event'?'依情況':'-');
               return `<option value="${lt.id}" ${disabled}>${lt.emoji} ${lt.name}（${remStr}）${!elig.ok?' ⛔':''}${lt.deductible?' ★扣薪':''}</option>`;
             }).join('')}
           </select>
           <div id="applyTypeInfo" style="margin-top:8px"></div>
         </div>
-        <div class="form-group">
-          <label>開始日期 <span style="color:#DC2626">*</span></label>
+        <!-- 特休 hourly unit toggle -->
+        <div id="applyUnitRow" style="display:none" class="form-group full">
+          <label>請假單位</label>
+          <div style="display:flex;gap:20px;padding:6px 0">
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">
+              <input type="radio" name="applyUnit" value="days" checked onchange="applyUnitChange()"> 天數（含半天）
+            </label>
+            <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500">
+              <input type="radio" name="applyUnit" value="hours" onchange="applyUnitChange()"> 小時
+            </label>
+          </div>
+        </div>
+        <div class="form-group" id="applyStartGroup">
+          <label id="applyStartLabel">開始日期 <span style="color:#DC2626">*</span></label>
           <input type="date" id="applyStart" min="${today()}" onchange="applyCalc()">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="applyEndGroup">
           <label>結束日期 <span style="color:#DC2626">*</span></label>
           <input type="date" id="applyEnd" min="${today()}" onchange="applyCalc()">
         </div>
-        <div class="form-group full" style="display:flex;align-items:center;gap:10px">
+        <!-- Hours selector (特休 小時模式) -->
+        <div class="form-group" id="applyHoursGroup" style="display:none">
+          <label>請假時數 <span style="color:#DC2626">*</span></label>
+          <select class="form-control" id="applyHours" onchange="applyCalc()">
+            ${[1,2,3,4,5,6,7,8].map(h=>`<option value="${h}">${h} 小時</option>`).join('')}
+          </select>
+        </div>
+        <div class="form-group full" id="applyHalfGroup" style="display:flex;align-items:center;gap:10px">
           <input type="checkbox" id="applyHalf" style="width:18px;height:18px;cursor:pointer" onchange="applyCalc()">
           <label for="applyHalf" style="margin:0;font-weight:500;cursor:pointer">半天請假</label>
         </div>
@@ -734,22 +871,47 @@ function renderApply() {
   `);
 }
 
+function applyUnitChange() {
+  const isHours = document.querySelector('input[name="applyUnit"]:checked')?.value==='hours';
+  document.getElementById('applyEndGroup').style.display = isHours?'none':'';
+  document.getElementById('applyHalfGroup').style.display = isHours?'none':'';
+  document.getElementById('applyHoursGroup').style.display = isHours?'':'none';
+  document.getElementById('applyStartLabel').textContent = isHours?'請假日期 *':'開始日期 *';
+  applyCalc();
+}
+
 function applyTypeChange() {
   const u=state.currentUser;
   const ltId=parseInt(document.getElementById('applyType').value);
   const b=getBalance(u.id,ltId);
   const lt=getLeaveType(ltId);
   const el=document.getElementById('applyTypeInfo');
+
+  // Show/hide hourly toggle for 特休
+  const unitRow=document.getElementById('applyUnitRow');
+  if (unitRow) {
+    unitRow.style.display = ltId===LT_ANNUAL?'':'none';
+    if (ltId!==LT_ANNUAL) {
+      const daysRadio=document.querySelector('input[name="applyUnit"][value="days"]');
+      if(daysRadio){daysRadio.checked=true;applyUnitChange();}
+    }
+  }
+
   if (!ltId){el.innerHTML='';return;}
   const elig=checkLeaveEligibility(u.id,ltId);
   if (!elig.ok){el.innerHTML=`<div class="alert alert-danger">⛔ ${elig.msg}</div>`;return;}
   const rem=b?b.totalDays-b.usedDays:null;
   const exp=b?.expiryDate&&new Date(b.expiryDate)<new Date();
-  el.innerHTML=`<div class="alert ${exp?'alert-danger':'alert-info'}">
+  let remDisplay='';
+  // 顯示臨界點警告（待審核特休將修完）
+  const eligWarning = elig.warning ? `<div class="alert alert-warning" style="margin-bottom:8px">⚠️ ${elig.warning}</div>` : '';
+  if (ltId===LT_ANNUAL&&rem!==null) remDisplay=`・剩餘 <strong>${daysToHours(rem)} 小時</strong>（已用 ${daysToHours(b.usedDays)} / ${daysToHours(b.totalDays)} 小時）`;
+  else if (rem!==null) remDisplay=`・剩餘 <strong>${rem} 天</strong>（已用 ${b.usedDays}/${b.totalDays}）`;
+  el.innerHTML=`${eligWarning}<div class="alert ${exp?'alert-danger':'alert-info'}">
     ${lt.emoji} ${lt.name}・${payTypeLabel(lt.payType)}
-    ${rem!==null?`・剩餘 <strong>${rem} 天</strong>（已用 ${b.usedDays}/${b.totalDays}）`:''}
+    ${remDisplay}
     ${b?.expiryDate?`・期限 ${fmtDate(b.expiryDate)}${exp?' ⚠️已過期':''}` : ''}
-    ${lt.requiresAnnualFirst?'・<span style="color:#7C3AED;font-weight:600">需先用完特別休假</span>':''}
+    ${lt.requiresAnnualFirst&&!elig.warning?'・<span style="color:#7C3AED;font-weight:600">需先用完特別休假</span>':''}
     ${lt.deductible?'・<span style="color:#DC2626;font-weight:600">★此假別將扣薪</span>':''}
   </div>`;
   applyCalc();
@@ -759,10 +921,26 @@ function applyCalc() {
   const u=state.currentUser;
   const ltId=parseInt(document.getElementById('applyType').value);
   const start=document.getElementById('applyStart').value;
-  const end=document.getElementById('applyEnd').value;
-  const half=document.getElementById('applyHalf').checked;
   const dEl=document.getElementById('applyDaysInfo');
   const cEl=document.getElementById('applyChainInfo');
+  const isHoursMode=document.querySelector('input[name="applyUnit"]:checked')?.value==='hours';
+
+  if (isHoursMode && ltId===LT_ANNUAL) {
+    if (!start){dEl.innerHTML='';cEl.innerHTML='';return;}
+    const hours=parseInt(document.getElementById('applyHours')?.value||1);
+    const days=hoursToDays(hours);
+    const b=getBalance(u.id,ltId);
+    const remHours=b?daysToHours(b.totalDays-b.usedDays):999;
+    const ok=hours<=remHours;
+    dEl.innerHTML=`<div class="alert ${ok?'alert-success':'alert-danger'}">🕐 請假 <strong>${hours} 小時</strong>${!ok?`・<span style="color:#DC2626">⚠️ 超過餘額（剩餘 ${remHours} 小時）</span>`:''}</div>`;
+    const chain=getApprovalChain(u.id,days);
+    if (chain.length) cEl.innerHTML=`<div class="alert alert-info">🔗 審批流程：${[u.name,...chain.map(id=>getUser(id)?.name||'?')].join(' → ')}</div>`;
+    else cEl.innerHTML='';
+    return;
+  }
+
+  const end=document.getElementById('applyEnd').value;
+  const half=document.getElementById('applyHalf').checked;
   if (!start||!end){dEl.innerHTML='';cEl.innerHTML='';return;}
   if (new Date(end)<new Date(start)){dEl.innerHTML='<div class="alert alert-danger">⚠️ 結束日期不能早於開始日期</div>';cEl.innerHTML='';return;}
   const days=half?0.5:calcDays(start,end);
@@ -781,21 +959,32 @@ function submitLeave() {
   const u=state.currentUser;
   const ltId=parseInt(document.getElementById('applyType').value);
   const start=document.getElementById('applyStart').value;
-  const end=document.getElementById('applyEnd').value;
-  const half=document.getElementById('applyHalf').checked;
   const reason=document.getElementById('applyReason').value.trim();
   if (!ltId){showToast('⚠️ 請選擇假別','warn');return;}
-  if (!start||!end){showToast('⚠️ 請填寫日期','warn');return;}
+  if (!start){showToast('⚠️ 請填寫日期','warn');return;}
   if (!reason){showToast('⚠️ 請填寫原因','warn');return;}
-  if (new Date(end)<new Date(start)){showToast('⚠️ 日期錯誤','warn');return;}
   const elig=checkLeaveEligibility(u.id,ltId);
   if (!elig.ok){showToast('⛔ '+elig.msg,'err');return;}
-  const days=half?0.5:calcDays(start,end);
+
+  const isHoursMode=document.querySelector('input[name="applyUnit"]:checked')?.value==='hours';
+  let days, hours=null, end=start, halfDay=false;
+
+  if (isHoursMode && ltId===LT_ANNUAL) {
+    hours=parseInt(document.getElementById('applyHours').value);
+    days=hoursToDays(hours);
+  } else {
+    end=document.getElementById('applyEnd').value;
+    halfDay=document.getElementById('applyHalf').checked;
+    if (!end){showToast('⚠️ 請填寫結束日期','warn');return;}
+    if (new Date(end)<new Date(start)){showToast('⚠️ 日期錯誤','warn');return;}
+    days=halfDay?0.5:calcDays(start,end);
+  }
+
   const b=getBalance(u.id,ltId);
   if (b&&days>b.totalDays-b.usedDays){showToast('⚠️ 假別餘額不足','err');return;}
   if (b?.expiryDate&&new Date(b.expiryDate)<new Date()){showToast('⚠️ 此假別已過期','err');return;}
   const chain=getApprovalChain(u.id,days);
-  state.data.requests.push({id:state.data.nextId++,userId:u.id,leaveTypeId:ltId,startDate:start,endDate:end,days,halfDay:half,reason,status:'pending',approvalChain:chain,currentStep:0,approvalLog:[],createdAt:today()});
+  state.data.requests.push({id:state.data.nextId++,userId:u.id,leaveTypeId:ltId,startDate:start,endDate:end,days,hours,halfDay,reason,status:'pending',approvalChain:chain,currentStep:0,approvalLog:[],createdAt:today()});
   saveData();
   showToast('✅ 申請已送出，等待審核');
   navigate('myLeaves');
@@ -820,7 +1009,7 @@ function renderMyLeaves() {
           return `<tr>
             <td><span class="badge badge-type">${lt.emoji} ${lt.name}</span></td>
             <td style="white-space:nowrap">${fmtDate(r.startDate)}<br><span class="text-muted">~${fmtDate(r.endDate)}</span></td>
-            <td>${r.days}${r.halfDay?' (半)':''} 天</td>
+            <td>${r.hours?r.hours+'小時':r.days+(r.halfDay?' (半)':'')+' 天'}</td>
             <td style="max-width:120px;font-size:13px">${r.reason}</td>
             <td>${statusBadge(r)}<br>${chainStepsHtml(r)}</td>
             <td class="text-muted">${fmtDate(r.createdAt)}</td>
@@ -856,11 +1045,15 @@ function renderBalances() {
         const rem=b.totalDays-b.usedDays;
         const pct=b.totalDays>0?Math.round(b.usedDays/b.totalDays*100):0;
         const exp=b.expiryDate&&new Date(b.expiryDate)<new Date();
+        const isAnnual=b.leaveTypeId===LT_ANNUAL;
+        const remDisp=isAnnual?`${daysToHours(rem)} 小時`:`${rem} 天`;
+        const totalDisp=isAnnual?`${daysToHours(b.totalDays)} 小時`:`${b.totalDays} 天`;
+        const usedDisp=isAnnual?`${daysToHours(b.usedDays)} 小時`:`${b.usedDays} 天`;
         return `<div class="balance-card" style="border-top-color:${lt.color};padding:20px">
-          <div class="type-name" style="font-size:15px">${lt.emoji} ${lt.name}</div>
-          <div class="days" style="color:${lt.color};font-size:30px;margin:8px 0">${rem} <span>/ ${b.totalDays} 天</span></div>
+          <div class="type-name" style="font-size:15px">${lt.emoji} ${lt.name}${isAnnual?' <span style="font-size:11px;color:#64748B">（小時制）</span>':''}</div>
+          <div class="days" style="color:${lt.color};font-size:28px;margin:8px 0">${remDisp} <span style="font-size:14px">/ ${totalDisp}</span></div>
           <div class="pay-type" style="font-size:12px">${payTypeLabel(lt.payType)}${lt.requiresAnnualFirst?'・需先用完特別休假':''}</div>
-          <div class="text-muted" style="font-size:12px;margin-top:2px">已使用 ${b.usedDays} 天</div>
+          <div class="text-muted" style="font-size:12px;margin-top:2px">已使用 ${usedDisp}</div>
           <div class="progress-bar" style="height:7px"><div class="progress-fill" style="width:${pct}%;background:${lt.color}"></div></div>
           ${b.expiryDate?`<div class="expiry ${exp?'expired':''}" style="font-size:12px;margin-top:10px">⏰ ${fmtDate(b.expiryDate)}${exp?' ⚠️ 已過期':''}</div>`:''}
           ${lt.deductible?'<div style="font-size:11px;color:#DC2626;margin-top:4px">★ 請假期間扣薪</div>':''}
@@ -949,6 +1142,23 @@ function showApproveModal(reqId,action) {
   const btn=document.getElementById('modal-confirm-btn');
   if (action==='approve'){document.getElementById('modal-title').textContent='✅ 核准請假申請';document.getElementById('modal-sub').textContent='核准後將進入下一審批流程或完成';btn.textContent='確認核准';btn.className='btn btn-success';}
   else{document.getElementById('modal-title').textContent='❌ 退件請假申請';document.getElementById('modal-sub').textContent='請填寫退件原因，方便員工重新申請';btn.textContent='確認退件';btn.className='btn btn-danger';}
+  // 主管審核警告：核准福利假但員工仍有已核准特休餘額
+  const warnEl=document.getElementById('modal-warning');
+  if (warnEl) {
+    const req=state.data.requests.find(r=>r.id===reqId);
+    if (action==='approve' && req && req.leaveTypeId===2) {
+      const ab=getBalance(req.userId,LT_ANNUAL);
+      const remHours=ab?daysToHours(ab.totalDays-ab.usedDays):0;
+      if (remHours>0) {
+        warnEl.textContent=`⚠️ 注意：此員工尚有 ${remHours} 小時特休未修完。依規定須先修完特休才可使用福利假，請確認是否核准。`;
+        warnEl.style.display='block';
+      } else {
+        warnEl.style.display='none';
+      }
+    } else {
+      warnEl.style.display='none';
+    }
+  }
   btn.onclick=processApproval;
   document.getElementById('approveModal').classList.add('show');
 }
@@ -1207,7 +1417,7 @@ function renderMonthlyReport() {
           </select>
           <button class="btn btn-primary btn-sm" onclick="genReport()">產出報表</button>
         </div>
-        <button class="btn btn-success btn-sm" onclick="exportCSV()">📥 匯出 CSV</button>
+        <button class="btn btn-success btn-sm" onclick="exportMonthlyExcel()">📥 匯出 Excel</button>
       </div>
       <div id="reportContent"></div>
     </div>
@@ -1432,6 +1642,495 @@ function updateLT(id,field,val){const lt=state.data.leaveTypes.find(t=>t.id===id
 function addLT(){const name=prompt('假別名稱：');if(!name)return;const newId=Math.max(...state.data.leaveTypes.map(t=>t.id),0)+1;state.data.leaveTypes.push({id:newId,name:name.trim(),color:'#6B7280',emoji:'📋',deductible:false,payType:'full',calcType:'event',autoCalc:null});saveData();showToast(`✅ 已新增 ${name}`);renderSettings();}
 function deleteLT(id){state.data.leaveTypes=state.data.leaveTypes.filter(t=>t.id!==id);state.data.balances=state.data.balances.filter(b=>b.leaveTypeId!==id);saveData();showToast('✅ 已刪除');renderSettings();}
 function resetAll(){if(!confirm('確定要清除所有資料並恢復預設值嗎？此操作無法復原！'))return;localStorage.removeItem(STORAGE_KEY);location.reload();}
+
+// ═══════════════════════════════════════
+//  VIEW: APPLY OVERTIME
+// ═══════════════════════════════════════
+function renderApplyOvertime() {
+  render(`
+    <div class="topbar"><h2>⏰ 申請加班</h2></div>
+    <div class="card" style="max-width:640px">
+      <div class="card-title">填寫加班申請</div>
+      <div class="alert alert-info">ℹ️ 填寫加班日期、起訖時間及原因，送出後由主管審核。</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>加班日期 <span style="color:#DC2626">*</span></label>
+          <input type="date" id="otDate" onchange="otCalc()">
+        </div>
+        <div class="form-group">
+          <label>開始時間 <span style="color:#DC2626">*</span></label>
+          <input type="time" id="otStart" onchange="otCalc()">
+        </div>
+        <div class="form-group">
+          <label>結束時間 <span style="color:#DC2626">*</span></label>
+          <input type="time" id="otEnd" onchange="otCalc()">
+        </div>
+        <div class="form-group full" id="otCalcInfo"></div>
+        <div class="form-group full">
+          <label>加班原因 <span style="color:#DC2626">*</span></label>
+          <textarea id="otReason" placeholder="請填寫加班原因或工作內容..."></textarea>
+        </div>
+      </div>
+      <div style="margin-top:20px;display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="navigate('dashboard')">取消</button>
+        <button class="btn btn-amber" onclick="submitOvertime()">📤 送出加班申請</button>
+      </div>
+    </div>
+  `);
+}
+
+function otCalc() {
+  const date=document.getElementById('otDate').value;
+  const start=document.getElementById('otStart').value;
+  const end=document.getElementById('otEnd').value;
+  const el=document.getElementById('otCalcInfo');
+  if (!date||!start||!end){el.innerHTML='';return;}
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  const mins=(eh*60+em)-(sh*60+sm);
+  if (mins<=0){el.innerHTML='<div class="alert alert-danger">⚠️ 結束時間必須晚於開始時間</div>';return;}
+  const hrs=(mins/60).toFixed(1);
+  el.innerHTML=`<div class="alert alert-success">⏱️ 加班時數：<strong>${hrs} 小時</strong></div>`;
+}
+
+function submitOvertime() {
+  const u=state.currentUser;
+  const date=document.getElementById('otDate').value;
+  const start=document.getElementById('otStart').value;
+  const end=document.getElementById('otEnd').value;
+  const reason=document.getElementById('otReason').value.trim();
+  if (!date){showToast('⚠️ 請填寫加班日期','warn');return;}
+  if (!start||!end){showToast('⚠️ 請填寫起訖時間','warn');return;}
+  if (!reason){showToast('⚠️ 請填寫加班原因','warn');return;}
+  const [sh,sm]=start.split(':').map(Number);
+  const [eh,em]=end.split(':').map(Number);
+  const mins=(eh*60+em)-(sh*60+sm);
+  if (mins<=0){showToast('⚠️ 結束時間必須晚於開始時間','err');return;}
+  const hours=parseFloat((mins/60).toFixed(1));
+  if (!state.data.overtimes) state.data.overtimes=[];
+  if (!state.data.nextOvertimeId) state.data.nextOvertimeId=1;
+  const chain=getApprovalChain(u.id,1);
+  state.data.overtimes.push({id:state.data.nextOvertimeId++,userId:u.id,date,startTime:start,endTime:end,hours,reason,status:'pending',approvalChain:chain,currentStep:0,approvalLog:[],createdAt:today()});
+  saveData();
+  showToast('✅ 加班申請已送出，等待審核');
+  navigate('myOvertimes');
+}
+
+// ═══════════════════════════════════════
+//  VIEW: MY OVERTIMES
+// ═══════════════════════════════════════
+function renderMyOvertimes() {
+  const u=state.currentUser;
+  const ots=(state.data.overtimes||[]).filter(o=>o.userId===u.id).reverse();
+  render(`
+    <div class="topbar"><h2>📋 我的加班記錄</h2>
+      <button class="btn btn-amber btn-sm" onclick="navigate('applyOvertime')">⏰ 申請加班</button>
+    </div>
+    <div class="card">
+      ${ots.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無加班記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>加班日期</th><th>時間</th><th>時數</th><th>原因</th><th>狀態</th><th>申請日</th><th></th></tr></thead>
+        <tbody>${ots.map(o=>{
+          const st=o.status==='approved'?'<span class="badge badge-approved">✅ 已核准</span>':
+            o.status==='rejected'?'<span class="badge badge-rejected">❌ 已退件</span>':
+            `<span class="badge badge-pending">⏳ 審核中</span>`;
+          return `<tr>
+            <td>${fmtDate(o.date)}</td>
+            <td style="white-space:nowrap">${o.startTime} ~ ${o.endTime}</td>
+            <td><strong>${o.hours} 小時</strong></td>
+            <td style="max-width:130px;font-size:13px">${o.reason}</td>
+            <td>${st}</td>
+            <td class="text-muted">${fmtDate(o.createdAt)}</td>
+            <td>${o.status==='pending'?`<button class="btn btn-sm btn-danger" onclick="cancelOvertime(${o.id})">撤回</button>`:''}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+  `);
+}
+
+function cancelOvertime(id) {
+  const m=document.getElementById('deleteModal');
+  document.getElementById('delete-sub').textContent='確定要撤回這筆加班申請嗎？';
+  document.getElementById('delete-confirm-btn').onclick=()=>{
+    state.data.overtimes=state.data.overtimes.filter(o=>o.id!==id);
+    saveData();closeModal('deleteModal');showToast('✅ 已撤回');renderMyOvertimes();
+  };
+  m.classList.add('show');
+}
+
+// ═══════════════════════════════════════
+//  VIEW: OVERTIME APPROVALS (Manager)
+// ═══════════════════════════════════════
+function renderOvertimeApprovals() {
+  const u=state.currentUser;
+  const pending=(state.data.overtimes||[]).filter(o=>o.status==='pending'&&(o.approvalChain||[])[o.currentStep||0]===u.id);
+  const history=(state.data.overtimes||[]).filter(o=>(o.approvalLog||[]).some(l=>l.approverId===u.id)).reverse().slice(0,20);
+  render(`
+    <div class="topbar"><h2>⏰ 加班審核</h2></div>
+    <div class="card">
+      <div class="card-title">⏳ 待審核（${pending.length} 筆）</div>
+      ${pending.length===0?'<div class="empty"><div class="icon">🎉</div><p>目前沒有待審核加班申請</p></div>':overtimeApprovalTable(pending)}
+    </div>
+    <div class="card">
+      <div class="card-title">📋 我的審核歷史</div>
+      ${history.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>員工</th><th>加班日期</th><th>時數</th><th>我的決定</th><th>備註</th></tr></thead>
+        <tbody>${history.map(o=>{
+          const emp=getUser(o.userId);
+          const myLog=(o.approvalLog||[]).find(l=>l.approverId===u.id);
+          return `<tr>
+            <td>${emp?.name}</td>
+            <td>${fmtDate(o.date)} ${o.startTime}~${o.endTime}</td>
+            <td>${o.hours} 小時</td>
+            <td>${myLog?(myLog.action==='approved'?'<span class="badge badge-approved">✅ 核准</span>':'<span class="badge badge-rejected">❌ 退件</span>'):'-'}</td>
+            <td class="text-muted">${myLog?.note||'-'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+  `);
+}
+
+function renderCeoOvertimeApprovals() {
+  const u=state.currentUser;
+  const pending=(state.data.overtimes||[]).filter(o=>o.status==='pending'&&(o.approvalChain||[])[o.currentStep||0]===u.id);
+  render(`
+    <div class="topbar"><h2>⏰ 加班審核（最終核准）</h2></div>
+    <div class="card">
+      <div class="card-title">⏳ 等待最終核准（${pending.length} 筆）</div>
+      ${pending.length===0?'<div class="empty"><div class="icon">🎉</div><p>目前沒有待審核加班申請</p></div>':overtimeApprovalTable(pending)}
+    </div>
+  `);
+}
+
+function overtimeApprovalTable(ots) {
+  return `<div class="table-wrap"><table>
+    <thead><tr><th>員工</th><th>加班日期</th><th>時間</th><th>時數</th><th>原因</th><th>操作</th></tr></thead>
+    <tbody>${ots.map(o=>{
+      const emp=getUser(o.userId);
+      return `<tr>
+        <td><strong>${emp?.name}</strong><br><span class="text-muted">${emp?.title}</span></td>
+        <td>${fmtDate(o.date)}</td>
+        <td style="white-space:nowrap">${o.startTime} ~ ${o.endTime}</td>
+        <td><strong>${o.hours} 小時</strong></td>
+        <td style="font-size:13px;max-width:150px">${o.reason}</td>
+        <td><div class="btn-group">
+          <button class="btn btn-sm btn-success" onclick="showOvertimeApproveModal(${o.id},'approve')">✅</button>
+          <button class="btn btn-sm btn-danger"  onclick="showOvertimeApproveModal(${o.id},'reject')">❌</button>
+        </div></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+let _otAction=null;
+function showOvertimeApproveModal(otId,action) {
+  _otAction={otId,action};
+  document.getElementById('ot-modal-note').value='';
+  const btn=document.getElementById('ot-modal-confirm-btn');
+  if (action==='approve'){
+    document.getElementById('ot-modal-title').textContent='✅ 核准加班申請';
+    document.getElementById('ot-modal-sub').textContent='確認核准此加班申請？';
+    btn.textContent='確認核准';btn.className='btn btn-success';
+  } else {
+    document.getElementById('ot-modal-title').textContent='❌ 退件加班申請';
+    document.getElementById('ot-modal-sub').textContent='請填寫退件原因';
+    btn.textContent='確認退件';btn.className='btn btn-danger';
+  }
+  btn.onclick=processOvertimeApproval;
+  document.getElementById('overtimeModal').classList.add('show');
+}
+
+function processOvertimeApproval() {
+  const {otId,action}=_otAction;
+  const note=document.getElementById('ot-modal-note').value.trim();
+  const ot=(state.data.overtimes||[]).find(o=>o.id===otId);
+  const u=state.currentUser;
+  if (!ot) return;
+  ot.approvalLog=ot.approvalLog||[];
+  ot.approvalLog.push({step:ot.currentStep,approverId:u.id,action,note,time:today()});
+  if (action==='reject'){ot.status='rejected';}
+  else {
+    ot.currentStep=(ot.currentStep||0)+1;
+    if (ot.currentStep>=ot.approvalChain.length) ot.status='approved';
+  }
+  saveData();closeModal('overtimeModal');
+  showToast(action==='approve'?(ot.status==='approved'?'✅ 全程核准':'✅ 已核准，轉送下一審批人'):'✅ 已退件');
+  u.role==='ceo'?renderCeoOvertimeApprovals():renderOvertimeApprovals();
+}
+
+// ═══════════════════════════════════════
+//  VIEW: HR OVERTIME REPORT
+// ═══════════════════════════════════════
+function renderHROvertimeReport() {
+  const ots=state.data.overtimes||[];
+  render(`
+    <div class="topbar"><h2>⏰ 加班記錄總覽</h2></div>
+    <div class="card">
+      <div class="card-title">所有加班申請</div>
+      ${ots.length===0?'<div class="empty"><div class="icon">📭</div><p>尚無加班記錄</p></div>':`
+      <div class="table-wrap"><table>
+        <thead><tr><th>員工</th><th>部門</th><th>加班日期</th><th>時間</th><th>時數</th><th>原因</th><th>狀態</th><th>申請日</th></tr></thead>
+        <tbody>${ots.slice().reverse().map(o=>{
+          const emp=getUser(o.userId);
+          const st=o.status==='approved'?'<span class="badge badge-approved">✅ 已核准</span>':
+            o.status==='rejected'?'<span class="badge badge-rejected">❌ 已退件</span>':
+            '<span class="badge badge-pending">⏳ 審核中</span>';
+          return `<tr>
+            <td><strong>${emp?.name}</strong></td>
+            <td>${emp?.dept}</td>
+            <td>${fmtDate(o.date)}</td>
+            <td style="white-space:nowrap">${o.startTime}~${o.endTime}</td>
+            <td><strong>${o.hours} 小時</strong></td>
+            <td style="font-size:13px;max-width:120px">${o.reason}</td>
+            <td>${st}</td>
+            <td class="text-muted">${fmtDate(o.createdAt)}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>`}
+    </div>
+  `);
+}
+
+// ═══════════════════════════════════════
+//  VIEW: EMPLOYEE ACCOUNTS (HR)
+// ═══════════════════════════════════════
+function renderEmployeeAccounts() {
+  const emps=state.data.users;
+  render(`
+    <div class="topbar"><h2>👤 員工帳號管理</h2>
+      <button class="btn btn-primary btn-sm" onclick="showEmployeeModal(null)">➕ 新增員工</button>
+    </div>
+    <div class="card">
+      <div class="table-wrap"><table>
+        <thead><tr><th>姓名</th><th>Email</th><th>部門</th><th>職稱</th><th>角色</th><th>直屬主管</th><th>到職日</th><th>年資</th><th>操作</th></tr></thead>
+        <tbody>${emps.map(emp=>{
+          const superior=emp.reportTo?getUser(emp.reportTo):null;
+          const trial=emp.hireDate&&isInTrial(emp.hireDate);
+          return `<tr>
+            <td><strong>${emp.name}</strong>${trial?'<br><span class="trial-badge">🔸試用期</span>':''}</td>
+            <td style="font-size:12px">${emp.email||'<span class="text-muted">-</span>'}</td>
+            <td><span class="chip">${emp.dept}</span></td>
+            <td class="text-muted">${emp.title}</td>
+            <td>${roleBadge(emp.role)}</td>
+            <td style="font-size:13px">${superior?superior.name:'<span class="text-muted">-</span>'}</td>
+            <td style="font-size:13px">${emp.hireDate?fmtDate(emp.hireDate):'<span class="text-muted">-</span>'}</td>
+            <td style="font-size:12px;color:#64748B">${emp.hireDate?serviceLabel(emp.hireDate):'-'}</td>
+            <td><div class="btn-group">
+              <button class="btn btn-sm btn-ghost" onclick="showEmployeeModal(${emp.id})">✏️ 編輯</button>
+              <button class="btn btn-sm btn-danger" onclick="removeEmployeeFromAccounts(${emp.id})">🗑️</button>
+            </div></td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table></div>
+    </div>
+  `);
+}
+
+let _editEmpId=null;
+function showEmployeeModal(uid) {
+  _editEmpId=uid;
+  const u=uid?getUser(uid):null;
+  document.getElementById('empModal-title').textContent=u?`編輯員工：${u.name}`:'新增員工';
+  document.getElementById('empModal-sub').textContent=u?`ID: ${u.id}・${u.email||'無Email'}`:'填寫新員工基本資料';
+  document.getElementById('emp-name').value=u?.name||'';
+  document.getElementById('emp-email').value=u?.email||'';
+  document.getElementById('emp-dept').value=u?.dept||'';
+  document.getElementById('emp-title').value=u?.title||'';
+  document.getElementById('emp-role').value=u?.role||'employee';
+  document.getElementById('emp-hireDate').value=u?.hireDate||'';
+  const sel=document.getElementById('emp-reportTo');
+  sel.innerHTML='<option value="">— 未指定 —</option>'+
+    state.data.users.filter(x=>!uid||x.id!==uid)
+      .map(x=>`<option value="${x.id}" ${u?.reportTo===x.id?'selected':''}>${x.name}（${x.title}）</option>`).join('');
+  document.getElementById('employeeModal').classList.add('show');
+}
+
+function saveEmployeeModal() {
+  const name=document.getElementById('emp-name').value.trim();
+  if (!name){showToast('⚠️ 請填寫姓名','warn');return;}
+  const email=document.getElementById('emp-email').value.trim();
+  const dept=document.getElementById('emp-dept').value.trim()||'未分配';
+  const title=document.getElementById('emp-title').value.trim()||'員工';
+  const role=document.getElementById('emp-role').value;
+  const hireDate=document.getElementById('emp-hireDate').value;
+  const reportToVal=document.getElementById('emp-reportTo').value;
+  const reportTo=reportToVal?parseInt(reportToVal):null;
+  const orgLevel=role==='ceo'?1:(role==='manager'||role==='hr')?2:3;
+
+  if (_editEmpId) {
+    const u=getUser(_editEmpId);
+    if (u){
+      u.name=name;u.email=email;u.dept=dept;u.title=title;
+      u.role=role;u.hireDate=hireDate;u.reportTo=reportTo;
+      if (reportTo){const sup=getUser(reportTo);if(sup)u.orgLevel=Math.min(sup.orgLevel+1,3);}
+      else u.orgLevel=orgLevel;
+      saveData();closeModal('employeeModal');showToast(`✅ 已更新 ${name}`);renderEmployeeAccounts();
+    }
+  } else {
+    const newId=Math.max(...state.data.users.map(u=>u.id),0)+1;
+    state.data.users.push({id:newId,name,email,role,dept,title,orgLevel,reportTo,hireDate});
+    state.data.leaveTypes.forEach(lt=>{
+      const expiry=lt.calcType==='anniversary'?calcNextAnniversary(hireDate):`${new Date().getFullYear()}-12-31`;
+      state.data.balances.push({userId:newId,leaveTypeId:lt.id,totalDays:0,usedDays:0,expiryDate:expiry});
+    });
+    const sel=document.getElementById('userSelect');
+    if(sel) sel.innerHTML+=`<option value="${newId}">${name}（${roleLabel(role)}・${title}）</option>`;
+    saveData();closeModal('employeeModal');showToast(`✅ 已新增 ${name}`);renderEmployeeAccounts();
+  }
+}
+
+// ═══════════════════════════════════════
+//  VIEW: CHANGE PASSWORD
+// ═══════════════════════════════════════
+function renderChangePassword() {
+  render(`
+    <div class="topbar"><h2>🔐 修改密碼</h2></div>
+    <div class="card" style="max-width:480px">
+      <div class="card-title">修改登入密碼</div>
+      <div class="form-group">
+        <label>目前密碼</label>
+        <div class="pwd-wrap">
+          <input type="password" id="cpOld" placeholder="輸入目前密碼">
+          <button class="pwd-toggle" onclick="togglePwd('cpOld')" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>新密碼（8位以上，英數混合）</label>
+        <div class="pwd-wrap">
+          <input type="password" id="cpNew1" placeholder="輸入新密碼">
+          <button class="pwd-toggle" onclick="togglePwd('cpNew1')" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>確認新密碼</label>
+        <div class="pwd-wrap">
+          <input type="password" id="cpNew2" placeholder="再次輸入新密碼">
+          <button class="pwd-toggle" onclick="togglePwd('cpNew2')" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div id="cpError" style="display:none" class="alert alert-danger"></div>
+      <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-ghost" onclick="navigate('dashboard')">取消</button>
+        <button class="btn btn-primary" onclick="submitChangePassword()">確認修改</button>
+      </div>
+    </div>
+  `);
+}
+
+function submitChangePassword() {
+  const u=state.currentUser;
+  const oldPwd=document.getElementById('cpOld').value;
+  const pwd1=document.getElementById('cpNew1').value;
+  const pwd2=document.getElementById('cpNew2').value;
+  const errEl=document.getElementById('cpError');
+  if (oldPwd!==u.password){errEl.textContent='目前密碼輸入錯誤';errEl.style.display='block';return;}
+  if (pwd1.length<8){errEl.textContent='新密碼至少需要 8 位';errEl.style.display='block';return;}
+  if (!/[A-Za-z]/.test(pwd1)||!/[0-9]/.test(pwd1)){errEl.textContent='密碼須同時包含英文字母及數字';errEl.style.display='block';return;}
+  if (pwd1!==pwd2){errEl.textContent='兩次輸入的密碼不一致';errEl.style.display='block';return;}
+  const userInData=state.data.users.find(x=>x.id===u.id);
+  if (userInData){userInData.password=pwd1;state.currentUser.password=pwd1;}
+  saveData();
+  showToast('✅ 密碼已成功修改');
+  navigate('dashboard');
+}
+
+function resetEmployeePassword(uid) {
+  const u=getUser(uid);
+  if (!u) return;
+  const newPwd=generatePassword();
+  u.password=newPwd;
+  u.mustChangePassword=true;
+  saveData();
+  alert(`${u.name} 的新預設密碼已重設：\n\n  ${newPwd}\n\n請將此密碼通知員工，下次登入時系統將強制要求修改密碼。`);
+  showToast(`✅ 已重設 ${u.name} 的密碼`);
+  renderEmployeeAccounts();
+}
+
+function removeEmployeeFromAccounts(uid) {
+  const m=document.getElementById('deleteModal');
+  document.getElementById('delete-sub').textContent=`確定要移除員工「${getUser(uid)?.name}」嗎？`;
+  document.getElementById('delete-confirm-btn').onclick=()=>{
+    state.data.users=state.data.users.filter(u=>u.id!==uid);
+    state.data.balances=state.data.balances.filter(b=>b.userId!==uid);
+    state.data.requests=state.data.requests.filter(r=>r.userId!==uid);
+    if(state.data.overtimes) state.data.overtimes=state.data.overtimes.filter(o=>o.userId!==uid);
+    saveData();closeModal('deleteModal');showToast('✅ 已移除');renderEmployeeAccounts();
+  };
+  m.classList.add('show');
+}
+
+// ═══════════════════════════════════════
+//  EXCEL EXPORT (SheetJS)
+// ═══════════════════════════════════════
+function loadSheetJS(cb) {
+  if (typeof XLSX !== 'undefined') { cb(); return; }
+  const s=document.createElement('script');
+  s.src='https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+  s.onload=cb;
+  s.onerror=()=>showToast('⚠️ 無法載入 Excel 模組，請確認網路連線','err');
+  document.head.appendChild(s);
+}
+
+function exportMonthlyExcel() {
+  loadSheetJS(()=>{
+    const year=parseInt(document.getElementById('repYear').value);
+    const month=parseInt(document.getElementById('repMonth').value);
+    const ym=`${year}-${String(month).padStart(2,'0')}`;
+    const emps=state.data.users;
+    const lts=state.data.leaveTypes;
+
+    // ── Sheet 1：請假報表 ──
+    const leaveHeader=['員工姓名','帳號','部門','職稱',...lts.map(lt=>lt.name),'合計請假天數','應扣薪天數'];
+    const leaveRows=emps.map(emp=>{
+      const used={};lts.forEach(lt=>{used[lt.id]=0;});
+      state.data.requests
+        .filter(r=>r.userId===emp.id&&r.status==='approved'&&(r.startDate.startsWith(ym)||r.endDate.startsWith(ym)))
+        .forEach(r=>{used[r.leaveTypeId]=(used[r.leaveTypeId]||0)+(r.leaveTypeId===LT_ANNUAL&&r.hours?r.hours/8:r.days);});
+      const total=Object.values(used).reduce((s,v)=>s+v,0);
+      const deduct=lts.filter(lt=>lt.deductible).reduce((s,lt)=>s+(used[lt.id]||0),0);
+      // 特休顯示為小時
+      const vals=lts.map(lt=>lt.id===LT_ANNUAL?(used[lt.id]?daysToHours(used[lt.id])+'小時':0):used[lt.id]||0);
+      return [emp.name, emp.username||'-', emp.dept, emp.title, ...vals, total||0, deduct||0];
+    });
+
+    // 加小計列
+    const totalRow=['合計','','',''];
+    lts.forEach((_,i)=>{
+      const colVals=leaveRows.map(r=>typeof r[4+i]==='string'?parseFloat(r[4+i])||0:r[4+i]);
+      totalRow.push(colVals.reduce((s,v)=>s+v,0));
+    });
+    totalRow.push(leaveRows.reduce((s,r)=>s+r[4+lts.length],0));
+    totalRow.push(leaveRows.reduce((s,r)=>s+r[5+lts.length],0));
+
+    const ws1=XLSX.utils.aoa_to_sheet([leaveHeader,...leaveRows,totalRow]);
+    // 設定欄寬
+    ws1['!cols']=[{wch:14},{wch:14},{wch:10},{wch:12},...lts.map(()=>({wch:10})),{wch:12},{wch:10}];
+    // 標頭樣式（SheetJS CE 不支援完整樣式，但設定基本格式）
+    ws1['!rows']=[{hpt:20}];
+
+    // ── Sheet 2：加班記錄 ──
+    const otHeader=['員工姓名','帳號','部門','加班日期','開始時間','結束時間','時數(小時)','原因','狀態'];
+    const statusMap={approved:'已核准',rejected:'已退件',pending:'審核中'};
+    const otRows=(state.data.overtimes||[])
+      .filter(o=>o.date.startsWith(ym))
+      .map(o=>{
+        const emp=getUser(o.userId);
+        return [emp?.name||'-', emp?.username||'-', emp?.dept||'-', o.date, o.startTime, o.endTime, o.hours, o.reason, statusMap[o.status]||o.status];
+      });
+    const otSummaryRow=['','','','加班總時數','','',otRows.reduce((s,r)=>s+r[6],0),'',''];
+    const ws2=XLSX.utils.aoa_to_sheet([otHeader,...otRows,...(otRows.length?[otSummaryRow]:[])]);
+    ws2['!cols']=[{wch:14},{wch:14},{wch:10},{wch:12},{wch:10},{wch:10},{wch:10},{wch:20},{wch:10}];
+
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb,ws1,'請假報表');
+    XLSX.utils.book_append_sheet(wb,ws2,'加班記錄');
+    XLSX.writeFile(wb,`假勤報表_${year}年${month}月.xlsx`);
+    showToast(`📥 已匯出 ${year}年${month}月 Excel 報表`);
+  });
+}
 
 // INIT
 initLogin();
