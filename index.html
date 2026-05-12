@@ -339,6 +339,7 @@ textarea{resize:vertical;min-height:80px}
 const STORAGE_KEY = 'leaveSystem_v3';
 const LT_ANNUAL  = 1;  // 特別休假
 const LT_WELFARE = 2;  // 福利休假
+const LT_COMP    = 9;  // 加班補休
 
 const defaultData = {
   users: [
@@ -357,6 +358,7 @@ const defaultData = {
     {id:6, name:'喪假',     color:'#6B7280', emoji:'🕯️', deductible:false, payType:'full', calcType:'event',       autoCalc:null},
     {id:7, name:'生理假',   color:'#F59E0B', emoji:'🌸', deductible:false, payType:'half', calcType:'calendar',    autoCalc:null,      yearMax:1},
     {id:8, name:'公假',     color:'#0EA5E9', emoji:'🏛️', deductible:false, payType:'full', calcType:'event',       autoCalc:null},
+    {id:9, name:'加班補休', color:'#059669', emoji:'🔄', deductible:false, payType:'full', calcType:'event',       autoCalc:null, requiresAnnualFirst:false},
     {id:9, name:'陪產假',   color:'#10B981', emoji:'👶', deductible:false, payType:'full', calcType:'event',       autoCalc:null,      maxDays:5},
   ],
   balances: [
@@ -689,9 +691,6 @@ function updateSidebar() {
       {view:'approvals',icon:'✅',label:'待審核申請'},
       {view:'overtimeApprovals',icon:'⏰',label:'加班審核'},
       {view:'teamOverview',icon:'📊',label:'團隊假別總覽'},
-      {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
-      {view:'employees',icon:'👥',label:'員工假別管理'},
-      {view:'settings',icon:'⚙️',label:'系統設定'},
     ],
     hr:[
       {view:'dashboard',icon:'🏠',label:'儀表板'},
@@ -711,8 +710,8 @@ function updateSidebar() {
     ],
     ceo:[
       {view:'dashboard',icon:'🏠',label:'儀表板'},
-      {view:'ceoApprovals',icon:'✅',label:'待我審核（請假）'},
-      {view:'ceoOvertimeApprovals',icon:'⏰',label:'待我審核（加班）'},
+      {view:'ceoApprovals',icon:'✅',label:'待審核（請假）'},
+      {view:'ceoOvertimeApprovals',icon:'⏰',label:'待審核（加班）'},
       {view:'teamOverview',icon:'📊',label:'全員假別總覽'},
       {view:'orgChart',icon:'🏗️',label:'審批架構設定'},
     ],
@@ -761,7 +760,7 @@ function renderDashboard() {
       <div class="stat-card"><div class="stat-num" style="color:#2563EB">${totalLeft}</div><div class="stat-label">剩餘天數</div></div>
       <div class="stat-card"><div class="stat-num" style="color:#F59E0B">${myReqs.filter(r=>r.status==='pending').length}</div><div class="stat-label">審核中</div></div>
       <div class="stat-card"><div class="stat-num" style="color:#16A34A">${myReqs.filter(r=>r.status==='approved').length}</div><div class="stat-label">已核准</div></div>
-      <div class="stat-card"><div class="stat-num" style="color:#7C3AED">${myPending.length}</div><div class="stat-label">待我審核</div></div>
+      <div class="stat-card"><div class="stat-num" style="color:#7C3AED">${myPending.length}</div><div class="stat-label">待審核</div></div>
     </div>
     <div class="card">
       <div class="card-title">💰 假別餘額</div>
@@ -818,7 +817,7 @@ function renderApply() {
               const elig=checkLeaveEligibility(u.id,lt.id);
               const disabled=!elig.ok?'disabled':'';
               let remStr;
-              if (lt.id===LT_ANNUAL&&rem!==null) remStr=`剩餘 ${daysToHours(rem)} 小時`;
+              if ([LT_ANNUAL,LT_COMP].includes(lt.id)&&rem!==null) remStr=`剩餘 ${daysToHours(rem)} 小時`;
               else remStr=rem!==null?`剩餘 ${rem} 天`:(lt.calcType==='event'?'依情況':'-');
               return `<option value="${lt.id}" ${disabled}>${lt.emoji} ${lt.name}（${remStr}）${!elig.ok?' ⛔':''}${lt.deductible?' ★扣薪':''}</option>`;
             }).join('')}
@@ -890,8 +889,8 @@ function applyTypeChange() {
   // Show/hide hourly toggle for 特休
   const unitRow=document.getElementById('applyUnitRow');
   if (unitRow) {
-    unitRow.style.display = ltId===LT_ANNUAL?'':'none';
-    if (ltId!==LT_ANNUAL) {
+    unitRow.style.display = [LT_ANNUAL,LT_COMP].includes(ltId)?'':'none';
+    if (![LT_ANNUAL,LT_COMP].includes(ltId)) {
       const daysRadio=document.querySelector('input[name="applyUnit"][value="days"]');
       if(daysRadio){daysRadio.checked=true;applyUnitChange();}
     }
@@ -905,7 +904,7 @@ function applyTypeChange() {
   let remDisplay='';
   // 顯示臨界點警告（待審核特休將修完）
   const eligWarning = elig.warning ? `<div class="alert alert-warning" style="margin-bottom:8px">⚠️ ${elig.warning}</div>` : '';
-  if (ltId===LT_ANNUAL&&rem!==null) remDisplay=`・剩餘 <strong>${daysToHours(rem)} 小時</strong>（已用 ${daysToHours(b.usedDays)} / ${daysToHours(b.totalDays)} 小時）`;
+  if ([LT_ANNUAL,LT_COMP].includes(ltId)&&rem!==null) remDisplay=`・剩餘 <strong>${daysToHours(rem)} 小時</strong>（已用 ${daysToHours(b.usedDays)} / ${daysToHours(b.totalDays)} 小時）`;
   else if (rem!==null) remDisplay=`・剩餘 <strong>${rem} 天</strong>（已用 ${b.usedDays}/${b.totalDays}）`;
   el.innerHTML=`${eligWarning}<div class="alert ${exp?'alert-danger':'alert-info'}">
     ${lt.emoji} ${lt.name}・${payTypeLabel(lt.payType)}
@@ -925,7 +924,7 @@ function applyCalc() {
   const cEl=document.getElementById('applyChainInfo');
   const isHoursMode=document.querySelector('input[name="applyUnit"]:checked')?.value==='hours';
 
-  if (isHoursMode && ltId===LT_ANNUAL) {
+  if (isHoursMode && [LT_ANNUAL,LT_COMP].includes(ltId)) {
     if (!start){dEl.innerHTML='';cEl.innerHTML='';return;}
     const hours=parseInt(document.getElementById('applyHours')?.value||1);
     const days=hoursToDays(hours);
@@ -969,7 +968,7 @@ function submitLeave() {
   const isHoursMode=document.querySelector('input[name="applyUnit"]:checked')?.value==='hours';
   let days, hours=null, end=start, halfDay=false;
 
-  if (isHoursMode && ltId===LT_ANNUAL) {
+  if (isHoursMode && [LT_ANNUAL,LT_COMP].includes(ltId)) {
     hours=parseInt(document.getElementById('applyHours').value);
     days=hoursToDays(hours);
   } else {
@@ -1045,7 +1044,7 @@ function renderBalances() {
         const rem=b.totalDays-b.usedDays;
         const pct=b.totalDays>0?Math.round(b.usedDays/b.totalDays*100):0;
         const exp=b.expiryDate&&new Date(b.expiryDate)<new Date();
-        const isAnnual=b.leaveTypeId===LT_ANNUAL;
+        const isAnnual=[LT_ANNUAL,LT_COMP].includes(b.leaveTypeId);
         const remDisp=isAnnual?`${daysToHours(rem)} 小時`:`${rem} 天`;
         const totalDisp=isAnnual?`${daysToHours(b.totalDays)} 小時`:`${b.totalDays} 天`;
         const usedDisp=isAnnual?`${daysToHours(b.usedDays)} 小時`:`${b.usedDays} 天`;
@@ -1099,7 +1098,7 @@ function renderCeoApprovals() {
   const u=state.currentUser;
   const pending=state.data.requests.filter(r=>r.status==='pending'&&(r.approvalChain||[])[r.currentStep||0]===u.id);
   render(`
-    <div class="topbar"><h2>✅ 待我審核</h2></div>
+    <div class="topbar"><h2>✅ 待審核</h2></div>
     <div class="card">
       <div class="card-title">⏳ 等待最終核准（${pending.length} 筆）</div>
       ${pending.length===0?'<div class="empty"><div class="icon">🎉</div><p>目前沒有待審核申請</p></div>':approvalTable(pending,true)}
@@ -1854,10 +1853,20 @@ function processOvertimeApproval() {
   if (action==='reject'){ot.status='rejected';}
   else {
     ot.currentStep=(ot.currentStep||0)+1;
-    if (ot.currentStep>=ot.approvalChain.length) ot.status='approved';
+    if (ot.currentStep>=ot.approvalChain.length) {
+      ot.status='approved';
+      // 核准後自動補充加班補休餘額（hours 小時 → hours/8 天）
+      const compDays = ot.hours / 8;
+      let bal = getBalance(ot.userId, LT_COMP);
+      if (!bal) {
+        state.data.balances.push({userId:ot.userId, leaveTypeId:LT_COMP, totalDays:compDays, usedDays:0, expiryDate:null});
+      } else {
+        bal.totalDays = Math.round((bal.totalDays + compDays) * 100) / 100;
+      }
+    }
   }
   saveData();closeModal('overtimeModal');
-  showToast(action==='approve'?(ot.status==='approved'?'✅ 全程核准':'✅ 已核准，轉送下一審批人'):'✅ 已退件');
+  showToast(action==='approve'?(ot.status==='approved'?`✅ 全程核准，已發放 ${ot.hours} 小時加班補休`:'✅ 已核准，轉送下一審批人'):'✅ 已退件');
   u.role==='ceo'?renderCeoOvertimeApprovals():renderOvertimeApprovals();
 }
 
@@ -2088,11 +2097,11 @@ function exportMonthlyExcel() {
       const used={};lts.forEach(lt=>{used[lt.id]=0;});
       state.data.requests
         .filter(r=>r.userId===emp.id&&r.status==='approved'&&(r.startDate.startsWith(ym)||r.endDate.startsWith(ym)))
-        .forEach(r=>{used[r.leaveTypeId]=(used[r.leaveTypeId]||0)+(r.leaveTypeId===LT_ANNUAL&&r.hours?r.hours/8:r.days);});
+        .forEach(r=>{used[r.leaveTypeId]=(used[r.leaveTypeId]||0)+([LT_ANNUAL,LT_COMP].includes(r.leaveTypeId)&&r.hours?r.hours/8:r.days);});
       const total=Object.values(used).reduce((s,v)=>s+v,0);
       const deduct=lts.filter(lt=>lt.deductible).reduce((s,lt)=>s+(used[lt.id]||0),0);
-      // 特休顯示為小時
-      const vals=lts.map(lt=>lt.id===LT_ANNUAL?(used[lt.id]?daysToHours(used[lt.id])+'小時':0):used[lt.id]||0);
+      // 特休／加班補休顯示為小時
+      const vals=lts.map(lt=>[LT_ANNUAL,LT_COMP].includes(lt.id)?(used[lt.id]?daysToHours(used[lt.id])+'小時':0):used[lt.id]||0);
       return [emp.name, emp.username||'-', emp.dept, emp.title, ...vals, total||0, deduct||0];
     });
 
